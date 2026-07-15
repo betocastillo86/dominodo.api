@@ -2,133 +2,180 @@
 
 ## What it is
 
-A **tenant** in Dominodo is a residential complex (*conjunto residencial*): the natural boundary that
-owns apartments, residents, PQRs, packages, and everything else. Nearly all business data belongs to
-exactly one tenant. We isolate tenants with **row-level `TenantId`** on tenant-owned aggregates, a
-resolved **`ITenantContext`**, and **explicit, on-demand query scoping** through a single helper.
+A **tenant** is a residential complex (*conjunto residencial*): the boundary that owns apartments,
+residents, PQRs, packages, etc. We isolate tenants with **row-level `TenantId`** on tenant-owned
+aggregates, a resolved **`ITenantContext`**, and **explicit query scoping** through one helper.
 
-We deliberately do **not** use a global EF query filter. Super-admin dashboards need to read across
-all tenants, and a global filter would force `IgnoreQueryFilters()` everywhere — turning the safe
-default into constant exceptions. Instead, scoping is explicit but funneled through one mechanism so
-it stays consistent and testable.
+The tenant is resolved from an **`X-Tenant` header carrying the site slug** (e.g. `los-almendros`), which
+the backend maps to a `TenantId`. The JWT does **not** decide the tenant — when present, it only
+*validates* that the caller belongs to the resolved tenant. Why the slug and not the JWT:
 
-## Why
+- **The slug is what the frontend already has** (from the URL/subdomain) — no extra call to discover a `Guid`.
+- **Anonymous endpoints still get scoped** (public PQR form, visitor pre-registration) — a JWT-only scheme can't.
+- **Super-admins** target a tenant by setting the header, or omit it to read across all tenants.
 
-- Row-level isolation is operationally simple: one database, one schema per module, one migration path
-  — no per-tenant schema/database sprawl.
-- An explicit `ForCurrentTenant` call keeps cross-tenant reads (super-admin) first-class rather than a
-  filter to bypass.
-- Funneling all scoping through one helper avoids the failure mode of hand-written
-  `.Where(x => x.TenantId == ...)` scattered across the codebase, where a single omission leaks data
-  between tenants.
+We do **not** use a global EF query filter: super-admin reads across tenants would turn it into
+constant `IgnoreQueryFilters()` calls. Scoping stays explicit but funneled through one mechanism.
 
 ## TenantId on aggregates
 
-Tenant-owned aggregates carry a `TenantId`. System-level data (the tenant registry itself, global
-notification configuration, super-admin accounts) is **not** tenant-scoped and has no `TenantId`.
+Tenant-owned aggregates carry the stable `Guid` `TenantId` (never the slug — slugs can be renamed).
+System-level data (the tenant registry, global config, super-admins) has no `TenantId`.
 
 ```csharp
 public sealed class Pqr : AggregateRoot
 {
     public Guid TenantId { get; private set; }
-    // ...
 }
 ```
 
-Index `TenantId` on every tenant-owned table (see [06 — Persistence](./06-persistence.md)); every
-scoped query filters on it.
+Index `TenantId` on every tenant-owned table (see [06 — Persistence](./06-persistence.md)).
+
+## Resolving the tenant
+
+```
+X-Tenant: los-almendros          Authorization: Bearer <jwt tenant_id claim> (optional)
+        │
+UseAuthentication  →  UseTenantResolution  →  UseAuthorization
+                          │
+                          slug ──(cached lookup)──▶ TenantId, then reconcile vs. JWT
+```
+
+- The **slug** decides the tenant; the middleware resolves it once and `ITenantContext.TenantId`
+  returns that `Guid`.
+- The **JWT** `tenant_id` claim (for non-super-admins) must match the resolved tenant, else `403`.
+- An **unknown slug** is rejected `400`; an **anonymous** request carries only the slug (nothing to reconcile).
+
+| Caller                       | JWT `tenant_id` | `X-Tenant` slug | Result                                    |
+| ---------------------------- | --------------- | --------------- | ----------------------------------------- |
+| Regular user, own site       | `A`             | slug of `A`     | ✅ `TenantId == A`                         |
+| Regular user, forged/missing | `A`             | slug of `B` / — | ❌ `403 Tenant.Mismatch`                   |
+| Unknown slug                 | *(any)*         | `nope`          | ❌ `400 Tenant.Unknown`                    |
+| Anonymous (public endpoint)  | *(none)*        | slug of `A`     | ✅ `TenantId == A`, no reconciliation      |
+| Super-admin, one tenant      | *(any)*         | slug of `A`     | ✅ acts on `A`                             |
+| Super-admin, cross-tenant    | *(any)*         | *(absent)*      | ✅ `HasTenant == false`, reads all tenants |
+
+> The slug **identifies** a tenant; it never **authorizes**. Authorization comes from the JWT and
+> endpoint policies. Anonymous endpoints must only expose data safe to be public per tenant. The
+> reconciliation check guarantees a forged slug can't let an *authenticated* caller escape their tenant.
+
+## The slug → TenantId resolver
+
+The tenant registry lives in the **Tenants module**, but the resolution middleware lives in
+`Shared.Infrastructure`, which may not reference a module's `Contracts`. So the lookup is a **port in
+`Shared.Abstractions`, implemented by the Tenants module**, wired in the host:
+
+```csharp
+// Shared.Abstractions — the port
+public interface ITenantDirectory
+{
+    Task<Guid?> ResolveSlugAsync(string slug, CancellationToken ct);   // null if no such site
+}
+
+// Tenants.Application — internal impl, cached (slug→id is ~static; invalidate on rename)
+internal sealed class TenantDirectory(...) : ITenantDirectory { /* cache + registry lookup */ }
+```
 
 ## ITenantContext
 
-Resolved once per request from the authenticated principal (a `tenant_id` claim in the JWT) and made
-available through DI. It also knows whether the caller is a super-admin.
+`TenantId` is the resolved `Guid` (stashed in `HttpContext.Items` by the middleware);
+`HttpTenantContext` reads it synchronously and stays free of any module dependency.
 
 ```csharp
-// Dominodo.Shared.Kernel
+// Shared.Kernel
 public interface ITenantContext
 {
-    Guid TenantId { get; }        // throws if accessed without a tenant in scope
+    Guid TenantId { get; }   // throws if no tenant resolved this request
     bool HasTenant { get; }
     bool IsSuperAdmin { get; }
 }
 ```
 
-```csharp
-// Dominodo.Shared.Infrastructure/Tenancy/HttpTenantContext.cs
-internal sealed class HttpTenantContext(IHttpContextAccessor accessor) : ITenantContext
-{
-    private ClaimsPrincipal? User => accessor.HttpContext?.User;
+## The resolution middleware
 
-    public bool IsSuperAdmin => User?.IsInRole("SuperAdmin") ?? false;
-    public bool HasTenant => Guid.TryParse(User?.FindFirstValue("tenant_id"), out _);
-    public Guid TenantId => Guid.TryParse(User?.FindFirstValue("tenant_id"), out var id)
-        ? id
-        : throw new InvalidOperationException("No tenant in the current context.");
+Runs **after** authentication, **before** authorization. It resolves the slug and enforces the one
+invariant that makes a client-supplied header safe: *an authenticated caller only acts on their own tenant.*
+
+```csharp
+public async Task Invoke(HttpContext ctx, ITenantDirectory directory)   // directory injected per-request
+{
+    var slug = ctx.Request.Headers["X-Tenant"].ToString();
+    var isTenantUser = (ctx.User.Identity?.IsAuthenticated ?? false) && !ctx.User.IsInRole("SuperAdmin");
+
+    if (!string.IsNullOrWhiteSpace(slug))
+    {
+        var tenantId = await directory.ResolveSlugAsync(slug, ctx.RequestAborted);
+        if (tenantId is null) return Reject(ctx, 400, "Tenant.Unknown");
+
+        ctx.Items["TenantId"] = tenantId.Value;
+
+        // super-admins exempt; a tenant-bound token must agree with the resolved tenant
+        if (isTenantUser && Guid.TryParse(ctx.User.FindFirstValue("tenant_id"), out var claim)
+            && claim != tenantId.Value)
+            return Reject(ctx, 403, "Tenant.Mismatch");
+    }
+    else if (isTenantUser && ctx.User.FindFirstValue("tenant_id") is not null)
+    {
+        return Reject(ctx, 403, "Tenant.Mismatch");   // tenant user with no site header
+    }
+
+    await next(ctx);
 }
+```
+
+```csharp
+app.UseAuthentication();
+app.UseTenantResolution();   // ← slug → id, then reconcile vs. JWT
+app.UseAuthorization();
+```
+
+## Endpoints — declare the tenant expectation explicitly
+
+```csharp
+[Authorize]                     // tenant-scoped: slug required + validated against JWT
+[AllowAnonymous]                // public form: slug required, no JWT to validate
+[Authorize(Policy = "SuperAdmin")]  // cross-tenant: slug optional, plus a runtime IsSuperAdmin check
 ```
 
 ## The single scoping mechanism
 
-All tenant-scoped reads go through one extension method. Writes set `TenantId` from the context when
-the aggregate is created.
+All tenant-scoped reads go through one extension method; writes set `TenantId` from the context.
 
 ```csharp
-// Dominodo.Shared.Infrastructure/Tenancy/TenantQueryExtensions.cs
-public static class TenantQueryExtensions
-{
-    public static IQueryable<T> ForCurrentTenant<T>(this IQueryable<T> query, ITenantContext tenant)
-        where T : class, ITenantOwned
-        => query.Where(e => e.TenantId == tenant.TenantId);
-}
+public static IQueryable<T> ForCurrentTenant<T>(this IQueryable<T> query, ITenantContext tenant)
+    where T : class, ITenantOwned
+    => query.Where(e => e.TenantId == tenant.TenantId);
 
 public interface ITenantOwned { Guid TenantId { get; } }
 ```
 
-Tenant-scoped read (normal user):
-
 ```csharp
-var pqrs = await db.Pqrs
-    .ForCurrentTenant(tenant)     // the one, explicit, consistent scoping call
-    .Where(p => p.Status == PqrStatus.Open)
-    .ToListAsync(ct);
+var pqrs = await db.Pqrs.ForCurrentTenant(tenant).Where(p => p.Status == PqrStatus.Open).ToListAsync(ct);
 ```
 
-Cross-tenant read (super-admin dashboard) — simply do not scope, guarded by authorization:
+Cross-tenant read (super-admin) — do not scope, guard with authorization:
 
 ```csharp
-internal sealed class GetPqrStatsAcrossTenantsQueryHandler(IPqrsReadContext db, ITenantContext tenant)
-    : IQueryHandler<GetPqrStatsAcrossTenantsQuery, PqrStatsDto>
-{
-    public async Task<Result<PqrStatsDto>> Handle(GetPqrStatsAcrossTenantsQuery q, CancellationToken ct)
-    {
-        if (!tenant.IsSuperAdmin)
-            return Error.Forbidden("Pqr.CrossTenantForbidden", "Only super-admins may read across tenants.");
-
-        var stats = await db.Pqrs /* no ForCurrentTenant */ .GroupBy(p => p.TenantId) /* ... */ .ToListAsync(ct);
-        return /* ... */;
-    }
-}
+if (!tenant.IsSuperAdmin)
+    return Error.Forbidden("Pqr.CrossTenantForbidden", "Only super-admins may read across tenants.");
+var stats = await db.Pqrs.GroupBy(p => p.TenantId) /* ... */ .ToListAsync(ct);
 ```
 
 ## Guardrails
 
-Because scoping is explicit rather than automatic, protect against omissions:
-
-- **Endpoint authorization.** Cross-tenant endpoints require the `SuperAdmin` policy; regular
-  endpoints require a resolved tenant. A missing tenant on a tenant-scoped endpoint is a `401/403`,
-  not a silent all-tenant read.
-- **Architecture / analyzer guard.** An architecture test (or Roslyn analyzer) flags raw
-  `.Where(x => x.TenantId == ...)` outside the `TenantQueryExtensions` helper, so all scoping stays
-  funneled through the one method (see [10 — Testing](./10-testing.md)).
-- **Review checklist.** Any query over an `ITenantOwned` type either calls `ForCurrentTenant` or is an
-  explicitly authorized super-admin path — no third option.
+- **Middleware:** unknown slug → `400`; resolved tenant ≠ JWT (or missing) for a tenant user → `403`.
+- **Endpoints:** every endpoint is explicitly `[Authorize]`, `[AllowAnonymous]`, or `SuperAdmin`-guarded.
+  A tenant-scoped handler reaching `TenantId` with no resolved slug throws — never a silent all-tenant read.
+- **Analyzer/architecture test:** flags raw `.Where(x => x.TenantId == ...)` outside `ForCurrentTenant`
+  (see [10 — Testing](./10-testing.md)).
 
 ## Do / Don't
 
-- **Do** put `TenantId` on every tenant-owned aggregate and index it.
-- **Do** scope reads with `ForCurrentTenant(tenant)` — the single approved mechanism.
-- **Do** guard cross-tenant reads with a super-admin authorization check.
-- **Do** set `TenantId` from `ITenantContext` when creating a tenant-owned aggregate.
-- **Don't** hand-roll `.Where(x => x.TenantId == ...)` in handlers.
-- **Don't** rely on a global query filter (super-admin reads make it a liability here).
-- **Don't** let a tenant-scoped query run without either scoping it or authorizing a cross-tenant read.
+- **Do** send the site **slug** in `X-Tenant`; resolve it via `ITenantDirectory` (Tenants-owned, cached).
+- **Do** validate the resolved tenant against the JWT's `tenant_id` (reject on mismatch).
+- **Do** scope reads with `ForCurrentTenant`; set `TenantId` from `ITenantContext` on create.
+- **Do** guard cross-tenant reads with an `IsSuperAdmin` check.
+- **Don't** resolve the tenant from the JWT claim — the claim only *validates* the slug.
+- **Don't** reference the Tenants module's `Contracts` from `Shared.Infrastructure` — use the port.
+- **Don't** trust the slug for authority, or expose non-public data through `[AllowAnonymous]`.
+- **Don't** hand-roll `.Where(x => x.TenantId == ...)`, or rely on a global query filter.
