@@ -1,90 +1,90 @@
-# Dominodo — Suite de pruebas E2E
+# Dominodo — E2E test suite
 
-Esta carpeta contiene una **solución .NET independiente** (`Dominodo.E2E.sln`) que prueba la API de
-Dominodo **como una caja negra, a través de HTTP**. Vive en el mismo repositorio por comodidad de
-trabajo, pero **no comparte ni una sola línea de código con la API**: no referencia ningún proyecto de
-`src/`, no reutiliza sus DTOs y no se genera desde su OpenAPI.
+This folder holds a **standalone .NET solution** (`Dominodo.E2E.sln`) that tests the Dominodo API
+**as a black box, over HTTP**. It lives in the same repository for convenience, but it **shares not a
+single line of code with the API**: it references no project under `src/`, reuses none of its DTOs, and
+is never generated from its OpenAPI.
 
-Este documento es la **definición y la autoridad** del proyecto: qué es, cómo se estructura, qué reglas
-son innegociables y **cómo evoluciona de la mano de la API sin quedar acoplada a ella**. Léelo antes de
-crear un cliente, un modelo, un builder o un test.
-
----
-
-## 1. El miedo que este diseño resuelve (y cómo)
-
-> *"Si introduzco un bug en la API, no quiero que los tests E2E se 'autocorrijan' con el bug y parezca
-> que todo funciona."*
-
-Estar en otra solución **no** resuelve eso por sí solo. Lo que lo resuelve es **una disciplina**, y de
-ella derivan las reglas de oro de más abajo:
-
-1. **Los modelos y las rutas se escriben a mano, nunca se autogeneran del Swagger/OpenAPI de la API.**
-   Si generaras el cliente desde el contrato de la API, cualquier cambio de contrato —incluido uno
-   defectuoso— se propagaría solo al test y taparía el bug. Al escribirlos a mano, el test codifica el
-   contrato **esperado**; si la API se desvía, el test **se rompe ruidosamente**. Esa ruptura es el
-   producto, no un defecto.
-2. **La suite prueba el comportamiento esperado (la especificación), no la implementación.** Un test se
-   escribe desde "qué debería pasar", no desde "qué hace hoy el handler".
-3. **La independencia está enforced físicamente:** solución separada, cero `ProjectReference` hacia
-   `src/`, y una verificación en CI que falla si alguien la agrega (ver §5).
-
-La duplicación de código (modelos replicados) **es deliberada y es el precio del aislamiento.** No es
-deuda técnica; es la barrera que impide que el bug y su test se muevan juntos.
+This document is the project's **definition and authority**: what it is, how it is structured, which
+rules are non-negotiable, and **how it evolves alongside the API without becoming coupled to it**. Read
+it before creating a client, a model, a builder, or a test.
 
 ---
 
-## 2. Reglas innegociables
+## 1. The fear this design addresses (and how)
 
-1. **Caja negra por HTTP.** El único punto de contacto con la API es su superficie HTTP. Nada de
-   `DbContext`, nada de invocar handlers, nada de `WebApplicationFactory`. Eso ya lo cubren los tests de
-   integración dentro de `src/` (ver `docs/architecture/10-testing.md`); esta suite es **otra capa**.
-2. **Cero acoplamiento de código con la API.** Ningún proyecto de esta solución referencia un proyecto
-   de `src/`. Los modelos se replican a mano en `Dominodo.E2E.Clients`.
-3. **Nada de codegen desde OpenAPI.** Interfaces Refit y modelos, escritos y mantenidos a mano.
-4. **Los clientes solo se usan en el `Act`.** El `Arrange` se construye con **RequestBuilders**; el
-   `Assert` valida la respuesta. El `Act` es la llamada al cliente Refit que estamos probando.
-5. **Un eje de identidad y un eje de tenant, separados.** *Quién eres* = JWT (login real, cacheado).
-   *Dónde actúas* = slug en el header `X-Tenant`. Son independientes (ver §7).
-6. **Consistencia eventual = espera explícita.** Toda verificación que dependa de un integration event
-   (efecto cross-módulo) se hace con *polling con reintentos*, nunca con un `assert` inmediato (ver §8).
+> *"If I introduce a bug in the API, I don't want the E2E tests to 'auto-correct' around the bug and make
+> it look like everything works."*
+
+Living in a separate solution does **not** solve that on its own. What solves it is **a discipline**, and
+the golden rules below derive from it:
+
+1. **Models and routes are written by hand, never generated from the API's Swagger/OpenAPI.**
+   If you generated the client from the API's contract, any contract change — including a defective one —
+   would silently propagate into the test and mask the bug. Writing them by hand means the test encodes
+   the **expected** contract; if the API drifts, the test **breaks loudly**. That break is the product,
+   not a defect.
+2. **The suite tests expected behavior (the specification), not the implementation.** A test is written
+   from "what should happen", not from "what the handler does today".
+3. **Independence is enforced physically:** separate solution, zero `ProjectReference` into `src/`, and a
+   CI check that fails the build if someone adds one (see §5).
+
+The code duplication (replicated models) **is deliberate and is the price of isolation.** It is not
+technical debt; it is the barrier that stops a bug and its test from moving together.
 
 ---
 
-## 3. Layout de la solución
+## 2. Non-negotiable rules
 
-Espeja el modelo de Pollaya, renombrado a Dominodo y alineado al vocabulario de módulos
+1. **Black box over HTTP.** The only contact point with the API is its HTTP surface. No `DbContext`, no
+   invoking handlers, no `WebApplicationFactory`. Those are already covered by the integration tests
+   inside `src/` (see `docs/architecture/10-testing.md`); this suite is **a different layer**.
+2. **Zero code coupling with the API.** No project in this solution references a project under `src/`.
+   Models are replicated by hand in `Dominodo.E2E.Clients`.
+3. **No codegen from OpenAPI.** Refit interfaces and models are written and maintained by hand.
+4. **Clients are used only in the `Act`.** The `Arrange` is built with **RequestBuilders**; the `Assert`
+   validates the response. The `Act` is the call to the Refit client under test.
+5. **One identity axis and one tenant axis, kept separate.** *Who you are* = JWT (real login, cached).
+   *Where you act* = slug in the `X-Tenant` header. They are independent (see §7).
+6. **Eventual consistency = explicit wait.** Any assertion that depends on an integration event (a
+   cross-module effect) is done via *polling with retries*, never an immediate assert (see §8).
+
+---
+
+## 3. Solution layout
+
+Mirrors the Pollaya model, renamed to Dominodo and aligned to the module vocabulary
 (`Users`, `Tenants`, `Operations`, `Admin`).
 
 ```
-tests/e2e/                                  # raíz de la solución E2E — NO se incluye en Dominodo.sln
+tests/e2e/                                  # E2E solution root — NOT included in Dominodo.sln
   Dominodo.E2E.sln
-  Directory.Build.props                     # TFM = el de la API (net9.0), nullable, ImplicitUsings
-  Directory.Packages.props                  # (opcional) Central Package Management
+  Directory.Build.props                     # TFM = the API's (net9.0), nullable, ImplicitUsings
+  Directory.Packages.props                  # (optional) Central Package Management
 
   src/
-    Dominodo.E2E.Core/                      # transversal, sin HTTP
+    Dominodo.E2E.Core/                      # cross-cutting, no HTTP
       Autofixture/                          #   AutoDataAttribute, InlineAutoData
-      Faker/                                #   extensiones Bogus (teléfonos E.164, NIT, slugs...)
-      Context/                              #   AmbientTenantContext (AsyncLocal: slug actual)
-      Policies/                             #   RetryPolicies (Polly) para consistencia eventual
-      DominodoConstants.cs                  #   Headers, Roles, Defaults (slug por defecto)
+      Faker/                                #   Bogus extensions (E.164 phones, NIT, slugs...)
+      Context/                              #   AmbientTenantContext (AsyncLocal: current slug)
+      Policies/                             #   RetryPolicies (Polly) for eventual consistency
+      DominodoConstants.cs                  #   Headers, Roles, Defaults (default slug)
 
-    Dominodo.E2E.Clients.Core/              # fontanería HTTP (sin lógica de negocio)
+    Dominodo.E2E.Clients.Core/              # HTTP plumbing (no business logic)
       Api/         ApiSettings.cs           #   BaseUrl, DefaultTenantSlug, timeouts
-      Handlers/                             #   DelegatingHandlers encadenados
-        AuthorizationHandler.cs             #     inyecta Bearer (token del login real cacheado)
-        TenantHeaderHandler.cs              #     inyecta X-Tenant desde AmbientTenantContext
-        CorrelationIdHandler.cs             #     inyecta X-Correlation-Id + X-TestName
+      Handlers/                             #   chained DelegatingHandlers
+        AuthorizationHandler.cs             #     injects Bearer (token from cached real login)
+        TenantHeaderHandler.cs              #     injects X-Tenant from AmbientTenantContext
+        CorrelationIdHandler.cs             #     injects X-Correlation-Id + X-TestName
         LoggingHandler.cs
         DefaultRetryHandler.cs
       Context/     TestExecutionContext.cs  #   AsyncLocal: correlationId + testName
-      Models/                               #   respuestas base replicadas: ProblemDetailsModel,
+      Models/                               #   replicated base responses: ProblemDetailsModel,
                                             #     PagedResultModel<T>, CreatedModel
 
-    Dominodo.E2E.Clients/                   # clientes Refit + modelos + builders, POR MÓDULO
+    Dominodo.E2E.Clients/                   # Refit clients + models + builders, PER MODULE
       Common/      BaseRequestBuilder.cs
-      Auth/                                 #   IAuthClient + IAuthTokenProvider (login real, cacheado)
+      Auth/                                 #   IAuthClient + IAuthTokenProvider (real login, cached)
       Modules/
         Users/       IUsersClient.cs  Models/  UsersRequestBuilder.cs
         Tenants/     ITenantsClient.cs Models/  TenantsRequestBuilder.cs
@@ -93,40 +93,40 @@ tests/e2e/                                  # raíz de la solución E2E — NO s
       ClientsServiceRegister.cs             #   AddUsersClient(), AddTenantsClient(), ... + handlers
 
   tests/
-    Dominodo.E2E.Tests.Shared/              # base classes + fixture + seeding compartidos
-      BaseE2ETests.cs                       #   Fixture, Faker, correlation/test-name por test
-      E2ESetupFixtureBase.cs                #   OneTimeSetUp: DI + seeding del tenant por defecto
-      Seeding/                              #   siembra tenant por defecto, roles, super-admin
-    Dominodo.E2E.Tests.Users/               # 1 proyecto por módulo (SetUpFixture es por-assembly)
+    Dominodo.E2E.Tests.Shared/              # shared base classes + fixture + seeding
+      BaseE2ETests.cs                       #   Fixture, Faker, correlation/test-name per test
+      E2ESetupFixtureBase.cs                #   OneTimeSetUp: DI + default-tenant seeding
+      Seeding/                              #   seeds default tenant, roles, super-admin
+    Dominodo.E2E.Tests.Users/               # 1 project per module (SetUpFixture is per-assembly)
     Dominodo.E2E.Tests.Tenants/
     Dominodo.E2E.Tests.Operations/
     Dominodo.E2E.Tests.Admin/
 ```
 
-**Dependencias entre proyectos** (todas apuntan "hacia el core", igual que la API apunta hacia adentro):
+**Project dependencies** (all point "toward the core", just as the API points inward):
 
-| Proyecto                     | Referencia a                                            |
+| Project                      | References                                              |
 | ---------------------------- | ------------------------------------------------------- |
-| `E2E.Core`                   | solo NuGet                                              |
+| `E2E.Core`                   | NuGet only                                              |
 | `E2E.Clients.Core`           | `E2E.Core`                                              |
 | `E2E.Clients`                | `E2E.Clients.Core`, `E2E.Core`                          |
 | `E2E.Tests.Shared`           | `E2E.Clients`, `E2E.Core`                               |
-| `E2E.Tests.<Module>`         | `E2E.Tests.Shared` (y por transitividad, lo anterior)   |
-| **cualquiera → `src/`**      | **prohibido** (enforced en CI, §5)                      |
+| `E2E.Tests.<Module>`         | `E2E.Tests.Shared` (and transitively, the above)        |
+| **anything → `src/`**        | **forbidden** (enforced in CI, §5)                      |
 
-> **Decisión — un proyecto de tests por módulo.** Es tu requisito explícito y da mejor aislamiento y
-> paralelismo. Costo a asumir: `[SetUpFixture]` de NUnit es **por assembly**, así que cada proyecto de
-> módulo arranca su propio `ServiceProvider` y ejecuta el seeding. Por eso el `SetUpFixture` y el seeding
-> viven en `E2E.Tests.Shared` como base reutilizable, y cada módulo tiene un `SetUpFixture` de una línea
-> que hereda de `E2ESetupFixtureBase`.
+> **Decision — one test project per module.** This is your explicit requirement and gives better
+> isolation and parallelism. Cost to accept: NUnit's `[SetUpFixture]` is **per assembly**, so each module
+> project boots its own `ServiceProvider` and runs the seeding. That is why the `SetUpFixture` and the
+> seeding live in `E2E.Tests.Shared` as a reusable base, and each module has a one-line `SetUpFixture`
+> that inherits from `E2ESetupFixtureBase`.
 
 ---
 
-## 4. Capa de clientes (Refit + handlers)
+## 4. Client layer (Refit + handlers)
 
-Un cliente por módulo. Interfaz Refit con las rutas **versionadas y escritas a mano**
-(`/api/v1/...`, ver `docs/architecture/11-cross-cutting.md`). El token va como parámetro Refit
-`[Authorize("Bearer")]` (null ⇒ request anónimo, para probar endpoints públicos y los 401).
+One client per module. A Refit interface with **versioned, hand-written routes**
+(`/api/v1/...`, see `docs/architecture/11-cross-cutting.md`). The token is passed as a Refit
+`[Authorize("Bearer")]` parameter (null ⇒ anonymous request, to test public endpoints and 401s).
 
 ```csharp
 public interface IOperationsClient
@@ -148,48 +148,47 @@ public interface IOperationsClient
 }
 ```
 
-**Handlers encadenados** (registrados en `ClientsServiceRegister`, uno por cliente):
+**Chained handlers** (registered in `ClientsServiceRegister`, one set per client):
 
-- `TenantHeaderHandler` — inyecta `X-Tenant: <slug>` desde `AmbientTenantContext` (el slug de la clase
-  de test actual, o el del tenant por defecto). Se puede sobreescribir por llamada.
-- `AuthorizationHandler` — no reescribe nada; el token ya viene del `[Authorize("Bearer")]`. (Se deja
-  como punto de extensión para políticas transversales; hoy es un passthrough.)
-- `CorrelationIdHandler` — `X-Correlation-Id` + `X-TestName` desde `TestExecutionContext` (trazabilidad
-   punta a punta contra los logs de la API, ver `docs/architecture/11-cross-cutting.md`).
-- `LoggingHandler`, `DefaultRetryHandler` — logging estructurado y reintentos de transporte (5xx/timeout),
-  **no** de aserción.
+- `TenantHeaderHandler` — injects `X-Tenant: <slug>` from `AmbientTenantContext` (the current test class's
+  slug, or the default tenant's). Overridable per call.
+- `AuthorizationHandler` — rewrites nothing; the token already comes from `[Authorize("Bearer")]`. Kept as
+  an extension point for cross-cutting policies; today it is a passthrough.
+- `CorrelationIdHandler` — `X-Correlation-Id` + `X-TestName` from `TestExecutionContext` (end-to-end
+  traceability against the API logs, see `docs/architecture/11-cross-cutting.md`).
+- `LoggingHandler`, `DefaultRetryHandler` — structured logging and transport retries (5xx/timeout),
+  **not** assertion retries.
 
-**Serialización:** `System.Text.Json` alineado a los defaults de ASP.NET Core de la API (enums como
-string, `DateTimeOffset` ISO-8601, camelCase). *No* usamos Newtonsoft (Pollaya sí lo usaba por su API
-legada; Dominodo es greenfield y debe casar con lo que emite el host).
+**Serialization:** `System.Text.Json` aligned to the API's ASP.NET Core defaults (enums as strings,
+`DateTimeOffset` ISO-8601, camelCase). We do *not* use Newtonsoft (Pollaya did, for its legacy API;
+Dominodo is greenfield and must match what the host emits).
 
 ---
 
-## 5. La independencia, enforced (no solo prometida)
+## 5. Independence, enforced (not just promised)
 
-Tres barreras, de la más barata a la más fuerte:
+Three barriers, cheapest to strongest:
 
-1. **Solución separada.** `Dominodo.E2E.sln` nunca incluye proyectos de `src/`, y `Dominodo.sln`
-   (el de la API) nunca incluye `tests/e2e/`.
-2. **Guarda en CI.** Un check que falla el build si aparece un `ProjectReference` que salga de
-   `tests/e2e/` hacia `src/`:
+1. **Separate solution.** `Dominodo.E2E.sln` never includes projects from `src/`, and `Dominodo.sln`
+   (the API's) never includes `tests/e2e/`.
+2. **CI guard.** A check that fails the build if a `ProjectReference` leaves `tests/e2e/` toward `src/`:
 
    ```bash
-   # scripts/e2e-guard.sh — corre en el workflow de E2E
+   # scripts/e2e-guard.sh — runs in the E2E workflow
    if grep -rl --include="*.csproj" -E 'ProjectReference[^>]*\.\./\.\./src/' tests/e2e; then
-     echo "❌ La suite E2E no puede referenciar proyectos de la API (src/)."; exit 1
+     echo "❌ The E2E suite cannot reference API projects (src/)."; exit 1
    fi
    ```
-3. **Prohibición de codegen.** No hay target de MSBuild ni script que genere clientes desde el OpenAPI.
-   Si algún día se quiere, se discute como cambio de arquitectura — porque **rompe la propiedad central**
-   de esta suite.
+3. **No codegen.** There is no MSBuild target or script that generates clients from the OpenAPI. If it is
+   ever wanted, it is discussed as an architecture change — because it **breaks the core property** of
+   this suite.
 
 ---
 
-## 6. Modelos replicados a mano
+## 6. Hand-written replicated models
 
-Viven en `Modules/<Module>/Models/`, uno por request/response. Espejan el DTO público de la API
-(`*.Contracts`) **por valor, no por referencia**: mismos nombres de campo, tipos equivalentes.
+They live in `Modules/<Module>/Models/`, one per request/response. They mirror the API's public DTO
+(`*.Contracts`) **by value, not by reference**: same field names, equivalent types.
 
 ```csharp
 // Dominodo.E2E.Clients/Modules/Operations/Models/NewRequestModel.cs
@@ -205,74 +204,72 @@ public sealed class NewRequestModel
 // RequestModel, PagedResultModel<T>, ProblemDetailsModel (RFC 9457), CreatedModel...
 ```
 
-Convención: sufijo `Model` (no `Dto`, para no confundir con los DTO de la API). `New*` para creación,
-`Update*` para edición, `*FilterModel` para query strings.
+Convention: `Model` suffix (not `Dto`, to avoid confusion with the API's DTOs). `New*` for creation,
+`Update*` for edits, `*FilterModel` for query strings.
 
 ---
 
-## 7. Autenticación y multitenancy en E2E
+## 7. Authentication and multitenancy in E2E
 
-Refleja `docs/architecture/09-multitenancy.md`: **el slug del header `X-Tenant` decide el tenant; el
-JWT solo valida** que el usuario pertenezca a ese tenant.
+Reflects `docs/architecture/09-multitenancy.md`: **the `X-Tenant` header slug decides the tenant; the JWT
+only validates** that the user belongs to that tenant.
 
-### Identidad — login real cacheado
+### Identity — cached real login
 
-Un `IAuthTokenProvider` que llama a los endpoints reales de auth y **cachea por `(usuario, tenantSlug)`**
-para no re-loguear en cada test. Ejercita el flujo de auth de verdad; el costo es que un bug en login
-tumba muchas suites (aceptable y deseable: auth es crítico).
+An `IAuthTokenProvider` that calls the real auth endpoints and **caches by `(user, tenantSlug)`** to avoid
+re-logging in on every test. It exercises the real auth flow; the cost is that an auth bug takes down many
+suites (acceptable and desirable: auth is critical).
 
 ```csharp
 public interface IAuthTokenProvider
 {
-    // login + selección de tenant reales; cacheado
+    // real login + tenant selection; cached
     Task<string> GetTokenAsync(string phone, string password, string tenantSlug);
-    Task<string> GetTokenForRoleAsync(string role, string tenantSlug); // usuarios sembrados por rol
+    Task<string> GetTokenForRoleAsync(string role, string tenantSlug); // seeded users per role
 }
 ```
 
-### Tenant — slug ambient + creación on-demand
+### Tenant — ambient slug + on-demand creation
 
-`AmbientTenantContext` (AsyncLocal) guarda el slug "actual"; `TenantHeaderHandler` lo inyecta en cada
-request. La estrategia de datos elegida (**tenant sembrado por defecto + tenants nuevos cuando el caso
-lo pida**, estilo Pollaya):
+`AmbientTenantContext` (AsyncLocal) holds the "current" slug; `TenantHeaderHandler` injects it on every
+request. The chosen data strategy (**seeded default tenant + new tenants when the case needs one**,
+Pollaya-style):
 
-- El `SetUpFixture` siembra **un tenant por defecto** (`DominodoConstants.Defaults.TenantSlug`,
-  p.ej. `e2e-default`) con sus roles, un super-admin y usuarios base por rol. La mayoría de tests actúan
-  sobre él.
-- Cuando un caso necesita aislamiento fuerte o datos vírgenes, `TenantsRequestBuilder.CreateTenant()`
-  crea uno nuevo (como super-admin), devuelve su slug, y el test lo fija en el `AmbientTenantContext`
-  para sus llamadas.
+- The `SetUpFixture` seeds **one default tenant** (`DominodoConstants.Defaults.TenantSlug`,
+  e.g. `e2e-default`) with its roles, a super-admin, and base users per role. Most tests act on it.
+- When a case needs strong isolation or virgin data, `TenantsRequestBuilder.CreateTenant()` creates a new
+  one (as super-admin), returns its slug, and the test sets it on the `AmbientTenantContext` for its calls.
 
-> **Riesgo a vigilar (tenant compartido):** tests que escriben sobre el tenant por defecto pueden
-> contaminarse entre sí (p.ej. conteos, listados paginados). Mitigación: aserciones que no dependan del
-> estado global (filtrar por el recurso creado en el test, no por totales del tenant), y mover a tenant
-> propio cualquier caso sensible al volumen de datos.
+> **Risk to watch (shared tenant):** tests that write to the default tenant can contaminate each other
+> (e.g. counts, paginated listings). Mitigation: assertions that do not depend on global state (filter by
+> the resource created in the test, not by tenant totals), and move any case sensitive to data volume to
+> its own tenant.
 
-### La matriz de reconciliación como test de primer nivel
+### The reconciliation matrix as a first-class test
 
-Justo el tipo de bug que un test acoplado taparía. Cubrir explícitamente la tabla del doc 09:
+Exactly the kind of bug a coupled test would mask. Cover the doc-09 table explicitly:
 
-| Caso                                   | `X-Tenant` | Token           | Esperado             |
-| -------------------------------------- | ---------- | --------------- | -------------------- |
-| Usuario regular, su sitio              | slug de A  | JWT de A        | `200`                |
-| Usuario regular, slug de otro tenant   | slug de B  | JWT de A        | `403 Tenant.Mismatch`|
-| Slug desconocido                       | `nope`     | cualquiera      | `400 Tenant.Unknown` |
-| Anónimo en endpoint público            | slug de A  | —               | `200`                |
-| Usuario de tenant sin header           | —          | JWT de A        | `403 Tenant.Mismatch`|
-| Super-admin cross-tenant               | ausente    | JWT super-admin | `200` (todos)        |
+| Case                                    | `X-Tenant` | Token           | Expected             |
+| --------------------------------------- | ---------- | --------------- | -------------------- |
+| Regular user, own site                  | slug of A  | JWT of A        | `200`                |
+| Regular user, another tenant's slug     | slug of B  | JWT of A        | `403 Tenant.Mismatch`|
+| Unknown slug                            | `nope`     | any             | `400 Tenant.Unknown` |
+| Anonymous on a public endpoint          | slug of A  | —               | `200`                |
+| Tenant user with no header              | —          | JWT of A        | `403 Tenant.Mismatch`|
+| Super-admin cross-tenant                | absent     | super-admin JWT | `200` (all)          |
 
 ---
 
-## 8. Capa de tests
+## 8. Test layer
 
-**Stack:** NUnit + AutoFixture + Bogus + Shouldly + Polly (mismas librerías que Pollaya).
+**Stack:** NUnit + AutoFixture + Bogus + Shouldly + Polly (same libraries as Pollaya).
 
-- `BaseE2ETests` (en `Shared`): expone `Fixture`, `Faker`, fija `TestExecutionContext` (correlationId +
-  nombre del test) en `[SetUp]` y lo limpia en `[TearDown]`.
-- Cada módulo tiene una `Base<Module>Tests` que resuelve del `ServiceProvider` sus builders y clientes en
-  `[OneTimeSetUp]`, y fija el `AmbientTenantContext` al tenant por defecto (o crea el suyo).
-- **Estructura del test:** `Arrange` con builders → `Act` = **una** llamada al cliente Refit bajo prueba
-  → `Assert` sobre `StatusCode`, `Content` y/o el `ProblemDetailsModel`.
+- `BaseE2ETests` (in `Shared`): exposes `Fixture`, `Faker`, sets `TestExecutionContext` (correlationId +
+  test name) in `[SetUp]` and clears it in `[TearDown]`.
+- Each module has a `Base<Module>Tests` that resolves its builders and clients from the `ServiceProvider`
+  in `[OneTimeSetUp]`, and sets the `AmbientTenantContext` to the default tenant (or creates its own).
+- **Test structure:** `Arrange` with builders → `Act` = **one** call to the Refit client under test →
+  `Assert` on `StatusCode`, `Content`, and/or the `ProblemDetailsModel`.
 
 ```csharp
 [TestFixture]
@@ -281,7 +278,7 @@ public class CreateRequestTests : BaseOperationsTests
     [Test]
     public async Task _401_WhenNoToken()
     {
-        // Act — sin token (anónimo)
+        // Act — no token (anonymous)
         var response = await OperationsClient.CreateRequest(
             OperationsRequestBuilder.BuildNewRequestModel());
 
@@ -292,7 +289,7 @@ public class CreateRequestTests : BaseOperationsTests
     [Test]
     public async Task _201_CreatesRequest_ForResident()
     {
-        // Arrange — un residente con apartamento en el tenant actual
+        // Arrange — a resident with an apartment in the current tenant
         var (token, resident, apartment) =
             await OperationsRequestBuilder.SetupResidentWithApartment();
         var model = OperationsRequestBuilder.BuildNewRequestModel(apartmentId: apartment.Id);
@@ -307,22 +304,22 @@ public class CreateRequestTests : BaseOperationsTests
 }
 ```
 
-### RequestBuilders — el corazón del `Arrange`
+### RequestBuilders — the heart of the `Arrange`
 
-Un builder por módulo, componible: un builder puede depender de otros para armar casos de uso completos
-(igual que en Pollaya `TriviasRequestBuilder` depende de `OrdersRequestBuilder`/`LeaguesRequestBuilder`).
-En Dominodo esto modela la dependencia natural del dominio: para crear un PQR necesitas tenant + usuario
-+ membresía + apartamento.
+One builder per module, composable: a builder may depend on others to assemble complete use cases (just
+like Pollaya's `TriviasRequestBuilder` depends on `OrdersRequestBuilder`/`LeaguesRequestBuilder`). In
+Dominodo this models the domain's natural dependency: to create a PQR you need tenant + user + membership
++ apartment.
 
 ```csharp
 public sealed class OperationsRequestBuilder : BaseRequestBuilder
 {
     private readonly IOperationsClient _operations;
-    private readonly TenantsRequestBuilder _tenants;   // crea tenant/apartamento
-    private readonly UsersRequestBuilder _users;       // crea usuario + membresía/rol
-    // ...ctor inyecta todo...
+    private readonly TenantsRequestBuilder _tenants;   // creates tenant/apartment
+    private readonly UsersRequestBuilder _users;       // creates user + membership/role
+    // ...ctor injects everything...
 
-    // Construye el modelo (datos falsos por defecto, sobreescribibles) — NO llama a la API
+    // Builds the model (fake data by default, overridable) — does NOT call the API
     public NewRequestModel BuildNewRequestModel(Guid? apartmentId = null, string? title = null) => new()
     {
         ApartmentId = apartmentId ?? Guid.NewGuid(),
@@ -331,7 +328,7 @@ public sealed class OperationsRequestBuilder : BaseRequestBuilder
         Description = Faker.Lorem.Paragraph(),
     };
 
-    // Caso de uso completo de Arrange — SÍ llama a la API (setup, no es el Act bajo prueba)
+    // Full Arrange use case — DOES call the API (setup, not the Act under test)
     public async Task<(string Token, ResidentModel Resident, ApartmentModel Apartment)>
         SetupResidentWithApartment()
     {
@@ -342,22 +339,22 @@ public sealed class OperationsRequestBuilder : BaseRequestBuilder
 }
 ```
 
-> **Regla:** los builders lanzan excepción si un paso de `Arrange` falla (respuesta no exitosa). Un
-> `Arrange` roto debe **abortar** el test, no producir un `Assert` engañoso. El único punto donde
-> evaluamos códigos de estado como parte del resultado es el `Act`.
+> **Rule:** builders throw if an `Arrange` step fails (non-success response). A broken `Arrange` must
+> **abort** the test, not produce a misleading `Assert`. The only place we evaluate status codes as part
+> of the outcome is the `Act`.
 
-### Consistencia eventual (integration events)
+### Eventual consistency (integration events)
 
-Los efectos cross-módulo son asíncronos (ver `docs/architecture/07-inter-module-communication.md`):
-crear un `Request` publica `RequestOpenedIntegrationEvent`, y el módulo `Admin` consume y genera
-notificaciones. Un `Assert` inmediato sería *flaky*. Se usa **polling con reintentos** (Polly), como el
-`RetryPolicies.CreateAssertionRetryPolicy` de Pollaya:
+Cross-module effects are asynchronous (see `docs/architecture/07-inter-module-communication.md`): creating
+a `Request` publishes `RequestOpenedIntegrationEvent`, and the `Admin` module consumes it and generates
+notifications. An immediate `Assert` would be *flaky*. Use **polling with retries** (Polly), like
+Pollaya's `RetryPolicies.CreateAssertionRetryPolicy`:
 
 ```csharp
 // Act
 await OperationsClient.CreateRequest(model, token);
 
-// Assert eventual — reintenta hasta que la notificación aparezca (o expira el timeout)
+// Eventual assert — retries until the notification appears (or the timeout expires)
 await RetryPolicies.Until<PagedResultModel<NotificationModel>>(
     action: () => AdminClient.GetMyNotifications(residentToken),
     predicate: page => page.Items.Any(n => n.Type == "RequestOpened"));
@@ -365,86 +362,85 @@ await RetryPolicies.Until<PagedResultModel<NotificationModel>>(
 
 ---
 
-## 9. Entorno y ejecución
+## 9. Environment and execution
 
-- **Contra qué corre:** la API + Postgres + bus levantados con **docker-compose local** (o Aspire). Los
-  tests apuntan a `http://localhost:<port>`. `BaseUrl` y `DefaultTenantSlug` en `appsettings.json`
-  (+ `appsettings.Local.json` opcional, gitignored) por proyecto de test.
-- **Estado de BD:** al ser local y controlado, el `SetUpFixture` puede resetear/migrar la BD antes de
-  sembrar. El aislamiento principal viene del **tenant** (por defecto + on-demand), no del reset.
-- **CI:** un workflow dedicado (separado del de la API) que: levanta docker-compose → espera health
-  (`/health/ready`, ver doc 11) → corre `dotnet test Dominodo.E2E.sln` → publica resultados.
-- **Load tests:** **fuera de alcance** por ahora (omitidos deliberadamente).
-
----
-
-## 10. Cómo evoluciona junto a la API (el punto crítico)
-
-La suite E2E **va detrás** de la API, a propósito y con intención. El flujo:
-
-1. La API agrega/cambia un endpoint (feature slice; ver `docs/architecture/03-cqrs-mediatr.md` y la skill
-   `domi-add-feature-slice`).
-2. En un **paso/PR separado y revisado por humano**, la suite E2E incorpora:
-   - el/los **modelos** replicados a mano en `Modules/<Module>/Models/`,
-   - el/los **métodos Refit** en `I<Module>Client`,
-   - el/los métodos de **RequestBuilder** para el `Arrange`,
-   - los **tests** (camino feliz + errores: 400/401/403/404/409/422 según doc 08, y la matriz de tenant
-     del doc 09 cuando aplique).
-3. **La desincronización es visible, no silenciosa.** Si la API cambió un contrato, el modelo a mano ya
-   no casa y el test falla. Ese fallo es la señal de "algo cambió, revísalo a conciencia" — exactamente
-   lo que buscabas.
-
-**Reglas para preservar la propiedad:**
-
-- El cambio de comportamiento de la API y el ajuste del test E2E **no van en el mismo commit sin
-  revisión**. Si un test E2E hay que cambiarlo, el PR debe justificar *por qué* el contrato esperado
-  cambió (no "para que pase").
-- **Versionado:** cuando la API rompe contrato, sube versión (`/api/v2/...`). La suite mantiene los tests
-  de `v1` mientras `v1` exista, y agrega los de `v2`. Nunca se "mueve" un test de v1 a v2 en silencio.
-- **Checklist por feature slice nuevo** (pegar en el PR de E2E):
-  - [ ] Modelos replicados a mano (sin copiar del proyecto de la API).
-  - [ ] Método(s) Refit con ruta versionada.
-  - [ ] RequestBuilder para el `Arrange`.
-  - [ ] Camino feliz + errores relevantes (doc 08).
-  - [ ] Matriz de tenant si el endpoint es tenant-scoped/anónimo/super-admin (doc 09).
-  - [ ] Aserción eventual (Polly) si dispara integration events (doc 07).
-  - [ ] Cliente usado **solo** en el `Act`.
+- **What it runs against:** the API + Postgres + bus brought up with **local docker-compose** (or Aspire).
+  Tests point at `http://localhost:<port>`. `BaseUrl` and `DefaultTenantSlug` in `appsettings.json`
+  (+ optional `appsettings.Local.json`, gitignored) per test project.
+- **DB state:** being local and controlled, the `SetUpFixture` may reset/migrate the DB before seeding.
+  The primary isolation comes from the **tenant** (default + on-demand), not from the reset.
+- **CI:** a dedicated workflow (separate from the API's) that: brings up docker-compose → waits for health
+  (`/health/ready`, see doc 11) → runs `dotnet test Dominodo.E2E.sln` → publishes results.
+- **Load tests:** **out of scope** for now (deliberately omitted).
 
 ---
 
-## 11. Convenciones de nombres
+## 10. How it evolves alongside the API (the critical point)
 
-- **Proyectos:** `Dominodo.E2E.<Área>` / `Dominodo.E2E.Tests.<Módulo>`.
-- **Clientes:** `I<Módulo>Client` (`IOperationsClient`).
-- **Builders:** `<Módulo>RequestBuilder`.
-- **Modelos:** `New<Noun>Model`, `Update<Noun>Model`, `<Noun>Model`, `<Noun>FilterModel`.
-- **Clases de test:** `<Verbo><Noun>Tests` (`CreateRequestTests`), una por caso de uso/endpoint.
-- **Tests:** `_<StatusCode>_<Escenario>` (`_403_WhenTenantMismatch`) — estilo Pollaya, legible en el runner.
+The E2E suite **follows** the API, on purpose and by intent. The flow:
+
+1. The API adds/changes an endpoint (feature slice; see `docs/architecture/03-cqrs-mediatr.md` and the
+   `domi-add-feature-slice` skill).
+2. In a **separate, human-reviewed step/PR**, the E2E suite adds:
+   - the hand-replicated **model(s)** in `Modules/<Module>/Models/`,
+   - the **Refit method(s)** in `I<Module>Client`,
+   - the **RequestBuilder** method(s) for the `Arrange`,
+   - the **tests** (happy path + errors: 400/401/403/404/409/422 per doc 08, and the doc-09 tenant matrix
+     when applicable).
+3. **Drift is visible, not silent.** If the API changed a contract, the hand-written model no longer
+   matches and the test fails. That failure is the "something changed, review it carefully" signal —
+   exactly what you wanted.
+
+**Rules that preserve the property:**
+
+- The API behavior change and the E2E test adjustment **do not go in the same commit without review.** If
+  an E2E test must change, the PR must justify *why* the expected contract changed (not "to make it pass").
+- **Versioning:** when the API breaks a contract, it bumps version (`/api/v2/...`). The suite keeps the
+  `v1` tests while `v1` exists, and adds the `v2` ones. A test is never silently "moved" from v1 to v2.
+- **Per-new-feature-slice checklist** (paste into the E2E PR):
+  - [ ] Models replicated by hand (not copied from the API project).
+  - [ ] Refit method(s) with versioned route.
+  - [ ] RequestBuilder for the `Arrange`.
+  - [ ] Happy path + relevant errors (doc 08).
+  - [ ] Tenant matrix if the endpoint is tenant-scoped/anonymous/super-admin (doc 09).
+  - [ ] Eventual assert (Polly) if it fires integration events (doc 07).
+  - [ ] Client used **only** in the `Act`.
 
 ---
 
-## 12. Librerías (alinear versiones al crear los `.csproj`)
+## 11. Naming conventions
 
-| Propósito                 | Paquete                                                        |
+- **Projects:** `Dominodo.E2E.<Area>` / `Dominodo.E2E.Tests.<Module>`.
+- **Clients:** `I<Module>Client` (`IOperationsClient`).
+- **Builders:** `<Module>RequestBuilder`.
+- **Models:** `New<Noun>Model`, `Update<Noun>Model`, `<Noun>Model`, `<Noun>FilterModel`.
+- **Test classes:** `<Verb><Noun>Tests` (`CreateRequestTests`), one per use case/endpoint.
+- **Tests:** `_<StatusCode>_<Scenario>` (`_403_WhenTenantMismatch`) — Pollaya-style, readable in the runner.
+
+---
+
+## 12. Libraries (align versions when creating the `.csproj`)
+
+| Purpose                   | Package                                                        |
 | ------------------------- | ------------------------------------------------------------- |
 | Test runner               | `NUnit`, `NUnit3TestAdapter`, `Microsoft.NET.Test.Sdk`        |
-| Clientes HTTP tipados     | `Refit`, `Refit.HttpClientFactory`                            |
-| Datos falsos              | `Bogus`, `AutoFixture`, `AutoFixture.NUnit3`                   |
-| Aserciones                | `Shouldly`                                                    |
-| Reintentos / eventual     | `Polly`                                                       |
+| Typed HTTP clients        | `Refit`, `Refit.HttpClientFactory`                            |
+| Fake data                 | `Bogus`, `AutoFixture`, `AutoFixture.NUnit3`                   |
+| Assertions                | `Shouldly`                                                    |
+| Retries / eventual        | `Polly`                                                       |
 | Config + DI + logging     | `Microsoft.Extensions.*`, `Serilog.Sinks.Console`             |
 
-> Serialización con `System.Text.Json` (no Newtonsoft) para casar con el host de Dominodo.
+> Serialization with `System.Text.Json` (not Newtonsoft) to match the Dominodo host.
 
 ---
 
-## 13. Estado y próximos pasos
+## 13. Status and next steps
 
-Este documento **es la semilla**. Todavía no existen los `.csproj`. Para arrancar la implementación:
+This document **is the seed.** The `.csproj` files do not exist yet. To start the implementation:
 
-1. Crear `Dominodo.E2E.sln` y los proyectos de §3 con el TFM de la API.
-2. Implementar `E2E.Clients.Core` (handlers) y `E2E.Core` (auth token provider, contexts, retry).
-3. Escribir a mano el primer módulo end-to-end (`Users` o `Tenants`) como **ejemplar canónico** —el que
-   todo lo demás copia—, incluida su siembra y la matriz de tenant.
-4. Añadir la guarda de CI (§5) y el workflow de docker-compose (§9).
-5. A partir de ahí, cada feature slice de la API arrastra su slice de E2E (§10).
+1. Create `Dominodo.E2E.sln` and the projects from §3 with the API's TFM.
+2. Implement `E2E.Clients.Core` (handlers) and `E2E.Core` (auth token provider, contexts, retry).
+3. Write the first module end-to-end by hand (`Users` or `Tenants`) as the **canonical exemplar** — the
+   one everything else copies — including its seeding and the tenant matrix.
+4. Add the CI guard (§5) and the docker-compose workflow (§9).
+5. From there, each API feature slice drags along its E2E slice (§10).
