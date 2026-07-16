@@ -19,7 +19,7 @@ historia y el razonamiento quedan aquí sin inflar el contexto del agente.
 | ADR | Título | Estado |
 | --- | --- | --- |
 | [0001](./0001-telefono-como-llave-de-identidad.md) | Teléfono como llave de identidad | Accepted |
-| [0002](./0002-rol-en-membership-no-en-user.md) | Rol asignado en Membership, no en User | Accepted |
+| [0002](./0002-rol-en-membership-no-en-user.md) | Rol asignado por ámbito (Membership tenant / PlatformRoleAssignment platform) | Accepted |
 | [0003](./0003-catalogo-global-de-roles-y-permisos.md) | Catálogo global de roles y permisos | Accepted |
 | [0004](./0004-modulo-admin-agrupa-notificaciones-y-config.md) | Módulo `Admin` agrupa notificaciones y configuración | Accepted |
 | [0005](./0005-modulo-operations-unificado.md) | Módulo `Operations` unifica PQRS, paquetería y visitas | Accepted |

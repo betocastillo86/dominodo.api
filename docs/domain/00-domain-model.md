@@ -1,6 +1,6 @@
 # Modelo de dominio — Dominodo (MVP)
 
-> **Estado:** vigente · **Versión del modelo:** v1 · **Última actualización:** 2026-07-15
+> **Estado:** vigente · **Versión del modelo:** v2 · **Última actualización:** 2026-07-16
 > Este archivo refleja siempre la **verdad actual** del modelo (documento vivo, un solo archivo).
 > El *porqué* de las decisiones vive en `docs/adr/`; la historia línea por línea, en git.
 > Se sube la versión (v2, v3…) solo ante cambios **estructurales**, no por correcciones menores.
@@ -26,13 +26,17 @@
 1. **Teléfono** = llave natural y única (canal WhatsApp). Email opcional, único si se provee.
 2. **Roles y permisos: catálogo global y único.** Un permiso nuevo aplica a todos los conjuntos.
    Propietario/Arrendatario **no son roles**: son el tipo de vínculo con un apartamento.
-3. **El rol se asigna en el `Membership`** (usuario↔conjunto↔rol), no en el `User`.
+3. **El rol se asigna según su ámbito (scope).** El rol de **ámbito `Tenant`** se asigna en el
+   `Membership` (usuario↔conjunto↔rol); el rol de **ámbito `Platform`**, en el
+   `PlatformRoleAssignment` (usuario↔rol global). Nunca en el `User`.
 4. **PQRS + paquetería + visitas** viven en **un solo módulo** (`Operations`).
 5. **Notifications + Configuration viven en un solo módulo `Admin`** (mismo schema, mismo futuro
    servicio): son temas administrativos que no queremos atomizar.
 6. **Tenant en el token** (claim `tenant_id`). Login global → elegir conjunto → token *tenant-scoped*
-   con el rol de ese conjunto. **`SuperAdmin`** es un rol con todos los permisos y acceso cross-tenant
-   (no un módulo aparte).
+   con el rol de ese conjunto. **`SuperAdmin`** es un rol de **ámbito `Platform`** con todos los
+   permisos; se asigna a un usuario **por dato** (una fila `PlatformRoleAssignment`), no por
+   constante en el código. Su acceso cross-tenant **sale de tener todos los permisos**, no de un
+   bypass hardcodeado. No es un módulo ni un usuario aparte.
 7. **Ejemplar canónico (primer módulo escrito a mano): `Users`** — con usuarios ya se pueden crear
    tenants después.
 
@@ -53,7 +57,7 @@
 
 | System-level (global, sin scoping) | Tenant-owned (`ITenantOwned`, se scopea) |
 | --- | --- |
-| `User`, `Role`, `Permission`, `RolePermission` | `Membership` |
+| `User`, `Role`, `Permission`, `RolePermission`, `PlatformRoleAssignment` | `Membership` |
 | `RefreshToken`, `VerificationCode`, `DeviceRegistration` | `Apartment`, `ApartmentResident`, `TenantFeature` |
 | `Tenant` (es el registro de tenants) | `Request`, `Delivery`, `Visit` y sus hijos |
 | `SystemSetting` global, `NotificationTemplate` global | `Announcement` |
@@ -96,28 +100,66 @@ por conjunto vive en `Membership`.
 | `Name` | `string`* | |
 | `Description` | `string?` | |
 | `IsSystem` | `bool` | Roles de sistema no se borran |
+| `Scope` | `enum` | `Platform` \| `Tenant` — **cómo se asigna el rol** (ver nota) |
 
-**Seed inicial:** `SuperAdmin`, `Administrador`, `AsistenteAdministracion`, `Vigilante`, `Residente`.
+**Seed inicial:**
+
+| Rol | Scope |
+| --- | --- |
+| `SuperAdmin` | `Platform` |
+| `Administrador` | `Tenant` |
+| `AsistenteAdministracion` | `Tenant` |
+| `Vigilante` | `Tenant` |
+| `Residente` | `Tenant` |
+
 `SuperAdmin` = todos los permisos + acceso cross-tenant.
+
+> **El `Scope` describe cómo se asigna el rol, no qué permisos agrupa.** Un rol `Platform` se asigna
+> globalmente al usuario (`PlatformRoleAssignment`, §1.5); un rol `Tenant` se asigna dentro de un
+> conjunto (`Membership`, §1.6). Un rol `Platform` **sí puede contener permisos de tenant**: de hecho
+> `SuperAdmin`, siendo `Platform`, agrupa todos los permisos (incluidos los de tenant como
+> `requests.create`) — por eso opera cross-tenant.
 
 ## 1.3 `Permission` (Agg) — global, **seed**
 
 | Campo | Tipo | Notas |
 | --- | --- | --- |
 | `Id` | `int` | Seed |
-| `Code` | `string`* | Namespaced: `requests.create`, `deliveries.register`, `users.manage`… |
+| `Code` | `string`* | Namespaced: `requests.create`, `deliveries.register`, `users.manage`, `tenants.create`… |
 | `Description` | `string` | |
-| `Group` | `string` | Para agrupar en UI (`Solicitudes`, `Paquetería`…) |
+| `Group` | `string` | Para agrupar en UI (`Solicitudes`, `Paquetería`, `Plataforma`…) |
+
+**Permisos de plataforma** (grupo `Plataforma`): capacidades que existen **sin tenant** y preceden a
+cualquier conjunto — `tenants.create`, `tenants.manage`. Se conceden por roles de ámbito `Platform`.
 
 > **Permisos = catálogo ligado al código** (hay un `if` que los verifica). **No** hay CRUD de permisos.
+> El **permiso no lleva scope**: es una capacidad neutra. Quién la ejerce y con qué alcance lo
+> determina el rol que la agrupa (§1.2) y el ámbito en que ese rol fue asignado.
 
 ## 1.4 `RolePermission` (join) — global, **seed**
 
 `RoleId` (int) + `PermissionId` (int). Único `(RoleId, PermissionId)`.
 
-## 1.5 `Membership` (Agg) — **`ITenantOwned`**
+## 1.5 `PlatformRoleAssignment` (Agg) — system-level
 
-El acceso de un usuario a un conjunto **con un rol**. Aquí vive la autorización por-conjunto.
+La asignación **global** de un rol de ámbito `Platform` a un usuario. Aquí vive la **autorización de
+plataforma**: capacidades que existen **sin tenant** y preceden a cualquier conjunto (crear/configurar
+conjuntos, gestionar el catálogo de roles, operar cross-tenant). Es la contraparte system-level del
+`Membership` (§1.6). El `SuperAdmin` bootstrap **es una fila de esta tabla**, no un caso especial del
+código.
+
+| Campo | Tipo | Notas |
+| --- | --- | --- |
+| `Id` | `Guid` | PK |
+| `UserId` | `Guid` | FK **interna** a `User` (mismo módulo) |
+| `RoleId` | `int` | FK interna a `Role`. Debe ser un rol con `Scope = Platform` |
+
+**Índice único** `(UserId, RoleId)`.
+
+## 1.6 `Membership` (Agg) — **`ITenantOwned`**
+
+El acceso de un usuario a un conjunto **con un rol** de ámbito `Tenant`. Aquí vive la autorización
+por-conjunto (la contraparte tenant-owned del `PlatformRoleAssignment`, §1.5).
 
 | Campo | Tipo | Notas |
 | --- | --- | --- |
@@ -131,7 +173,7 @@ El acceso de un usuario a un conjunto **con un rol**. Aquí vive la autorizació
 
 **Índice único** `(UserId, TenantId)` — un rol por persona por conjunto. Índice en `TenantId`.
 
-## 1.6 Autenticación (soporte)
+## 1.7 Autenticación (soporte)
 
 - **`RefreshToken`** (system-level): `Id`, `UserId`, `TokenHash`, `ExpiresAtUtc`, `RevokedAtUtc?`,
   `ReplacedByTokenId?`, `CreatedByIp?`. Rotación + revocación (lo que a pollaya le falta).
@@ -139,7 +181,7 @@ El acceso de un usuario a un conjunto **con un rol**. Aquí vive la autorizació
   (`PhoneVerify`/`Login`/`PasswordReset`), `CodeHash`, `ExpiresAtUtc`, `ConsumedAtUtc?`, `Attempts`.
   Para OTP por SMS/WhatsApp.
 
-## 1.7 Fachada `IUsersModuleApi` (Contracts)
+## 1.8 Fachada `IUsersModuleApi` (Contracts)
 
 > Esto **es** el `IModuleApi` de `07-inter-module-communication.md`: interfaz pública en `Contracts`,
 > implementada internamente delegando a MediatR del propio módulo. **No** es un endpoint ni reemplaza
@@ -149,10 +191,16 @@ El acceso de un usuario a un conjunto **con un rol**. Aquí vive la autorizació
 GetUserById(id)               -> UserDto?
 GetUserByPhone(phoneE164)     -> UserDto?        // ← lo usa el adaptador de WhatsApp
 GetMemberships(userId)        -> MembershipDto[]
-GetEffectivePermissions(userId, tenantId) -> PermissionDto[]
+GetPlatformPermissions(userId)            -> PermissionDto[]   // permisos de ámbito Platform del user
+GetEffectivePermissions(userId, tenantId) -> PermissionDto[]   // platform ∪ tenant (ver nota)
 ```
 
-## 1.8 Integration events (Contracts)
+> `GetEffectivePermissions(userId, tenantId)` devuelve la **unión** de los permisos de plataforma del
+> usuario (sus `PlatformRoleAssignment`) y los permisos del `Membership` de ese tenant. Como
+> `SuperAdmin` (`Platform`) tiene todos los permisos, para él devuelve todo en cualquier tenant —
+> ese es el acceso cross-tenant, derivado de datos.
+
+## 1.9 Integration events (Contracts)
 
 `UserRegisteredIntegrationEvent`, `MembershipCreatedIntegrationEvent`,
 `MembershipSuspendedIntegrationEvent`.
@@ -362,7 +410,7 @@ Registrada por vigilante, asociada a un apartamento.
 ## 3.4 Fachada `IOperationsModuleApi` (Contracts)
 
 Lecturas cross-module (p. ej. dashboards super-admin): `GetRequestSummary`,
-`GetOpenRequestsCount(tenantId)`… (mismo criterio que §1.7).
+`GetOpenRequestsCount(tenantId)`… (mismo criterio que §1.8).
 
 ## 3.5 Integration events (Contracts)
 
@@ -510,5 +558,6 @@ solicitudes por LLM (§3.1.1) es otro adaptador de entrada del módulo `Operatio
 1. **`Vigilante` y `AsistenteAdministracion` son roles separados.** ✅
 2. **Nombre del módulo: `Operations`.** ✅
 3. **Multipropietario permitido** (varias filas `ApartmentResident` con `Owner`). ✅
-4. **`SuperAdmin` = rol con todos los permisos y acceso cross-tenant**, no un módulo aparte. ✅
+4. **`SuperAdmin` = rol de ámbito `Platform` con todos los permisos y acceso cross-tenant**, asignado
+   por dato (`PlatformRoleAssignment`), no un módulo ni un usuario aparte. ✅
 5. **Ejemplar canónico = `Users`** (primero usuarios; con ellos se crean tenants). ✅
