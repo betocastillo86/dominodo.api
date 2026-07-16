@@ -1,4 +1,4 @@
-namespace Dominodo.Shared.Infrastructure.Auth;
+namespace Dominodo.Shared.Abstractions;
 
 public sealed class JwtOptions
 {

@@ -2,7 +2,7 @@ using Dominodo.Shared.Kernel;
 using Dominodo.Shared.Kernel.Messaging;
 using MediatR;
 
-namespace Dominodo.Shared.Infrastructure.Behaviors;
+namespace Dominodo.Shared.Application.Behaviors;
 
 internal sealed class UnitOfWorkBehavior<TRequest, TResponse>(IEnumerable<IUnitOfWork> unitsOfWork)
     : IPipelineBehavior<TRequest, TResponse>

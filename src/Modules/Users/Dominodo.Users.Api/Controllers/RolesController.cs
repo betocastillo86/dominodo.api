@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Dominodo.Users.Application.Controllers;
+namespace Dominodo.Users.Api.Controllers;
 
 [ApiController]
 [Authorize]

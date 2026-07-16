@@ -94,10 +94,10 @@ For validation failures the `errors` extension carries the per-field messages pr
 Controllers are inbound adapters. They send the request and map the `Result` — no business logic, no
 try/catch, no status-code decisions of their own.
 
-> **Where the controller lives:** in the module's `Application` project (registered on the host via
-> `AddApplicationPart`). It must be in that assembly to dispatch the module's `internal` MediatR
-> commands, and it uses `ErrorResults.ToProblem` from `Shared.Infrastructure`. Routes are versioned:
-> `[Route("api/v{version:apiVersion}/...")]`.
+> **Where the controller lives:** in the module's `*.Api` project (registered on the host via
+> `AddApplicationPart`). It dispatches the module's `internal` MediatR commands via `ISender` — access
+> granted by an `InternalsVisibleTo` on `*.Application` — and uses `ErrorResults.ToProblem` from
+> `Shared.Infrastructure`. Routes are versioned: `[Route("api/v{version:apiVersion}/...")]`.
 
 ```csharp
 [ApiController]

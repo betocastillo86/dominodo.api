@@ -17,7 +17,10 @@ public static class DependencyInjection
     // AddUsersMessaging (below) through Wolverine's EF integration, so the module's outbox is enrolled.
     public static IServiceCollection AddUsersPersistence(this IServiceCollection services)
     {
-        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<UsersDbContext>());
+        // The unit of work routes SaveChanges through Wolverine's durable outbox (persists the
+        // aggregate changes + domain-event envelopes in one transaction, then flushes async).
+        services.AddScoped<IUnitOfWork>(sp =>
+            new WolverineUnitOfWork<UsersDbContext>(sp.GetRequiredService<IDbContextOutbox<UsersDbContext>>()));
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
@@ -41,8 +44,7 @@ public static class DependencyInjection
                 sql => sql.MigrationsHistoryTable("__ef_migrations", UsersDbContext.Schema));
 
             options.AddInterceptors(
-                sp.GetRequiredService<AuditableEntityInterceptor>(),
-                sp.GetRequiredService<DispatchDomainEventsInterceptor>());
+                sp.GetRequiredService<AuditableEntityInterceptor>());
         });
 
         opts.PersistMessagesWithSqlServer(connectionString, role: MessageStoreRole.Ancillary)

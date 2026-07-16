@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- The module's controllers (when it exposes HTTP) live in the sibling Dominodo.Admin.Api project.
+       Grant it access to internals rather than making requests public. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Dominodo.Admin.Api" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
@@ -14,9 +20,7 @@
     <ProjectReference Include="..\Dominodo.Admin.Contracts\Dominodo.Admin.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Abstractions\Dominodo.Shared.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Infrastructure\Dominodo.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Users\Dominodo.Users.Contracts\Dominodo.Users.Contracts.csproj" />
   </ItemGroup>
-
 
 </Project>

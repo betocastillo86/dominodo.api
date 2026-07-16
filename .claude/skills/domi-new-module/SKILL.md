@@ -1,11 +1,11 @@
 ---
 name: domi-new-module
-description: Scaffold a new bounded-context module in the Dominodo modular monolith — the four projects (Domain, Application, Contracts, Persistence), DbContext + schema, DI wiring, and Contracts skeleton, wired into the host and solution. Use ONLY in the Dominodo (dominodo.api) repo when the user wants to create/add a new module or bounded context. This is Dominodo-specific — do not use for Keller Postman services.
+description: Scaffold a new bounded-context module in the Dominodo modular monolith — the five projects (Domain, Application, Api, Contracts, Persistence), DbContext + schema, DI wiring, and Contracts skeleton, wired into the host and solution. Use ONLY in the Dominodo (dominodo.api) repo when the user wants to create/add a new module or bounded context. This is Dominodo-specific — do not use for Keller Postman services.
 ---
 
 # Scaffold a new Dominodo module
 
-Creates a new bounded context as four projects plus tests, wired into the host and enforced by the
+Creates a new bounded context as five projects plus tests, wired into the host and enforced by the
 architecture tests. Dominodo is a modular monolith — every module is its own miniature clean
 architecture that could be extracted into a service later.
 
@@ -37,30 +37,50 @@ management — never pin versions in the csproj).
    - An `IntegrationEvents/` folder for `<Noun><PastTenseVerb>IntegrationEvent` records.
 
 3. **`Dominodo.<Module>.Application`** — references own `Domain`, `Shared.Kernel`,
-   `Shared.Abstractions`, and other modules' `*.Contracts` as needed. Everything here is `internal`. Add:
+   `Shared.Abstractions`, `Shared.Application`, and other modules' `*.Contracts` as needed. It must
+   **NOT** reference `Shared.Infrastructure` or ASP.NET. Everything here is `internal`. Add:
    - A feature folder convention (one folder per use case).
    - The **internal** `I<Module>ModuleApi` implementation that delegates to this module's MediatR.
    - `DependencyInjection.cs` exposing `public static IServiceCollection Add<Module>Module(this IServiceCollection, IConfiguration)`
      that registers MediatR handlers + validators from this assembly (`includeInternalTypes: true`),
      the facade impl, and calls `Add<Module>Persistence(config)`.
+   - `<InternalsVisibleTo Include="Dominodo.<Module>.Api" />` in the csproj, so the sibling `*.Api`
+     controllers can build the module's `internal` commands/queries without making them public.
 
-4. **`Dominodo.<Module>.Persistence`** — references own `Application`, own `Domain`,
+4. **`Dominodo.<Module>.Api`** — the module's inbound HTTP adapter: controllers ONLY. References own
+   `Application`, `Shared.Infrastructure` (for `ErrorResults.ToProblem`), `Shared.Kernel`; a
+   `FrameworkReference` to `Microsoft.AspNetCore.App`; the `MediatR` package (controllers use `ISender`).
+   It must **NOT** reference any `*.Persistence`. Add:
+   - A marker interface `I<Module>ApiMarker` (used by the host's `AddApplicationPart`).
+   - A `Controllers/` folder. Controllers are thin: bind the request, `sender.Send(...)`, map the
+     `Result` to HTTP via `ErrorResults.ToProblem`. Namespace `Dominodo.<Module>.Api.Controllers`.
+   - Create the project even if the module exposes no HTTP yet (empty but with the marker), to fix the
+     pattern — mirror `Dominodo.Admin.Api`.
+
+5. **`Dominodo.<Module>.Persistence`** — references own `Application`, own `Domain`,
    `Shared.Infrastructure`. Add:
-   - `<Module>DbContext` mapped to schema `<schema>` (`modelBuilder.HasDefaultSchema("<schema>")`),
-     built on the shared base DbContext (interceptors, outbox — see `docs/architecture/06-persistence.md`).
-   - `Add<Module>Persistence(this IServiceCollection, IConfiguration)` registering the DbContext and repositories.
-   - Repository implementations of the domain-owned ports; `EntityConfigurations/` for EF `IEntityTypeConfiguration`.
+   - `<Module>DbContext` mapped to schema `<schema>` (`modelBuilder.HasDefaultSchema("<schema>")`).
+   - An `Add<Module>Messaging(this WolverineOptions, connectionString)` helper (called from the host's
+     `UseWolverine`) that does `AddDbContextWithWolverineIntegration<<Module>DbContext>(...)` with
+     `UseSqlServer` + the `AuditableEntityInterceptor` (NOT a domain-events interceptor — that was
+     removed), then `PersistMessagesWithSqlServer(cs, Ancillary).Enroll<<Module>DbContext>()`.
+   - `Add<Module>Persistence(this IServiceCollection)` registering repositories and the unit of work as
+     `WolverineUnitOfWork<<Module>DbContext>` (over `IDbContextOutbox<<Module>DbContext>`) — this is
+     what routes domain events through the durable outbox in the same tx. See `docs/architecture/06`.
+   - Repository implementations of the domain-owned ports; `Configurations/` for EF `IEntityTypeConfiguration`.
 
-5. **No test projects by default.** Tests are opt-in (see `docs/architecture/10-testing.md`). Do **not**
+6. **No test projects by default.** Tests are opt-in (see `docs/architecture/10-testing.md`). Do **not**
    scaffold `Dominodo.<Module>.UnitTests` / `Dominodo.<Module>.IntegrationTests` when creating a module —
    create them only if the user explicitly asks for unit/integration coverage, at that point. Boundaries
    are enforced by `Dominodo.ArchitectureTests`; behavioral coverage lives in the standalone E2E suite
    under `tests/e2e/` (its own solution, added deliberately — see `tests/e2e/README.md`).
 
-6. **Wire into the host** `src/Bootstrap/Dominodo.Api`: call `services.Add<Module>Module(config)` in
-   composition. The host is the ONLY project that references `*.Persistence`.
+7. **Wire into the host** `src/Bootstrap/Dominodo.Api`: call `services.Add<Module>Module(config)` +
+   `services.Add<Module>Persistence()`, add `opts.Add<Module>Messaging(cs)` inside `UseWolverine`, and
+   register the controllers via `.AddApplicationPart(typeof(Dominodo.<Module>.Api.I<Module>ApiMarker).Assembly)`.
+   The host is the ONLY project that references `*.Persistence` and `*.Api`.
 
-7. **Add every new project to `Dominodo.sln`.**
+8. **Add every new project to `Dominodo.sln`** (including `*.Api`).
 
 ## Verify before declaring done
 
@@ -71,7 +91,9 @@ management — never pin versions in the csproj).
 
 ## Guardrails
 
-- Only `Contracts` may be referenced by other modules — never `Domain`/`Application`/`Persistence`.
+- Only `Contracts` may be referenced by other modules — never `Domain`/`Application`/`Api`/`Persistence`.
 - No cross-module foreign keys, joins, or shared schema.
-- Requests/handlers/facade impl are `internal`.
+- Requests/handlers/facade impl are `internal`; controllers live ONLY in `*.Api`.
+- `*.Application` must not reference `Shared.Infrastructure` or ASP.NET (its behaviors come from
+  `Shared.Application`). `*.Api` must not reference `*.Persistence`.
 - The module must not reference concrete adapters (`Adapters.*`) — only the host does.

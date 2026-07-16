@@ -108,8 +108,11 @@ internal sealed class PqrRepository(PqrsDbContext db) : IPqrRepository
 }
 ```
 
-`IUnitOfWork` is implemented by the module's `DbContext`. `SaveChangesAsync` is the single commit
-point where domain events are dispatched and the outbox is flushed, all in one transaction:
+`IUnitOfWork` is implemented per module by `WolverineUnitOfWork<TDbContext>` (in `Shared.Infrastructure`,
+registered over the module's `DbContext`). `SaveChangesAsync` is the single commit point: it collects
+the domain events raised by the tracked aggregates, publishes them to the module's Wolverine outbox, and
+calls `SaveChangesAndFlushMessagesAsync` — so the aggregate changes and the outbox rows commit in one
+transaction, then the events flush async/durable:
 
 ```csharp
 // Dominodo.Shared.Kernel
@@ -127,9 +130,10 @@ Cross-cutting persistence behavior lives in `Shared.Infrastructure` and is attac
 - **AuditableEntityInterceptor** — sets `CreatedAtUtc`/`CreatedBy` on insert and
   `UpdatedAtUtc`/`UpdatedBy` on update, using `IClock` and the current user. Aggregates never set
   these by hand.
-- **DispatchDomainEventsInterceptor** — after a successful save, publishes the domain events raised by
-  tracked aggregates through in-process MediatR (within the same transaction). See
-  [07 — Inter-Module Communication](./07-inter-module-communication.md).
+Domain events are **not** handled by an interceptor. `WolverineUnitOfWork<TDbContext>` enrols the
+events raised by the tracked aggregates into the module's Wolverine outbox during the same
+`SaveChanges` transaction, and Wolverine delivers them async/durable to in-module handlers. See
+[07 — Inter-Module Communication](./07-inter-module-communication.md).
 
 Engine = **SQL Server** (`Microsoft.EntityFrameworkCore.SqlServer`). The DbContext is registered
 through Wolverine's EF integration (`AddDbContextWithWolverineIntegration<T>`, so the module's outbox
@@ -143,13 +147,13 @@ opts.Services.AddDbContextWithWolverineIntegration<PqrsDbContext>((sp, options) 
     options.UseSqlServer(config.GetConnectionString("Dominodo"),
         sql => sql.MigrationsHistoryTable("__ef_migrations", PqrsDbContext.Schema));
     options.AddInterceptors(
-        sp.GetRequiredService<AuditableEntityInterceptor>(),
-        sp.GetRequiredService<DispatchDomainEventsInterceptor>());
+        sp.GetRequiredService<AuditableEntityInterceptor>());
 });
 opts.PersistMessagesWithSqlServer(cs, role: MessageStoreRole.Ancillary).Enroll<PqrsDbContext>();
 
 // in AddPqrsPersistence(IServiceCollection):
-services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PqrsDbContext>());
+services.AddScoped<IUnitOfWork>(sp =>
+    new WolverineUnitOfWork<PqrsDbContext>(sp.GetRequiredService<IDbContextOutbox<PqrsDbContext>>()));
 services.AddScoped<IPqrRepository, PqrRepository>();
 ```
 

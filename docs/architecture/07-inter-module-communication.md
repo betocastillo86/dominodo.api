@@ -3,7 +3,7 @@
 > **Bus: Wolverine** (MIT). Replaced MassTransit, which went commercial at v9 (paid license to boot)
 > and whose EF outbox didn't work in-process. Wolverine's durable outbox works in-process today and
 > its v5 modular-monolith support fits our one-DbContext/one-schema-per-module model. MediatR stays
-> for in-module dispatch and domain events.
+> for in-module dispatch of commands/queries; domain events go through Wolverine's durable outbox.
 
 ## What it is
 
@@ -14,13 +14,14 @@ Modules collaborate through exactly two channels, chosen by intent:
 | "Something happened; whoever cares can react." | **Integration event** over the message bus | async | temporal decoupling |
 | "I need a fact from you right now." | **`IModuleApi` facade** call | sync, in-process | call-time |
 
-A third concept is **not** cross-module: **domain events**, dispatched in-process *within a single
-module*, never leaving it.
+A third concept is **not** cross-module: **domain events**, delivered async/durable *within a single
+module* through that module's own outbox, never leaving it.
 
 ## Why the three-way split
 
 - **Domain events** decouple a module's internals (an aggregate announces a fact; local handlers
-  react) but run in the same transaction/database — so they cannot reach a module with another schema.
+  react). They are persisted to the module's own outbox in the same transaction as the aggregate, then
+  delivered async — so they stay within the module (its schema), never reaching another module.
 - **Integration events** are the mechanism when another module (another schema, another future
   service) must react. Publisher and subscriber commit **separate** transactions to **separate**
   schemas — eventual consistency, exactly the microservice semantics.
@@ -29,25 +30,34 @@ module*, never leaving it.
 
 ## Domain events (intra-module)
 
-Raised by an aggregate, dispatched after `SaveChangesAsync` by the `DispatchDomainEventsInterceptor`,
-handled by in-process MediatR `INotificationHandler`s in the same module and transaction. A common
-pattern: a domain-event handler **translates** an internal fact into a published integration event.
+Raised by an aggregate (`IDomainEvent` is a plain marker — **not** a MediatR `INotification`).
+When the command's `UnitOfWorkBehavior` saves, the module's unit of work
+(`WolverineUnitOfWork<TDbContext>`) collects the events raised by the tracked aggregates, publishes
+them to the module's Wolverine outbox, and calls `SaveChangesAndFlushMessagesAsync` — so the aggregate
+mutation and the outbox rows commit in **one transaction**, then the events are delivered
+**async/durable** to in-module **Wolverine** handlers. The immediate in-process dispatch is gone (the
+accepted trade-off): a handler runs *after* the commit, with retry/durability. A common pattern: a
+domain-event handler **translates** an internal fact into a published integration event.
 
 ```csharp
 // raised inside the aggregate (Dominodo.Pqrs.Domain)
 Raise(new PqrClosedDomainEvent(Id, ClosedAtUtc.Value));
 
-// handled inside the same module (Dominodo.Pqrs.Application) — translates to an integration event
-internal sealed class WhenPqrClosed_PublishIntegrationEvent(IMessageBus bus)
-    : INotificationHandler<PqrClosedDomainEvent>
+// handled inside the same module (Dominodo.Pqrs.Application) — a Wolverine handler, delivered async
+// from the outbox after commit. Like the integration-event consumers: **public** (Wolverine's
+// generated code cannot see internal types) but treated like a controller — it only dispatches this
+// module's OWN work, so the boundary holds. Dependencies as METHOD parameters (constructor injection
+// trips ServiceLocationPolicy). Translates to an integration event; that PublishAsync enrols in this
+// module's outbox too.
+public sealed class WhenPqrClosed_PublishIntegrationEvent
 {
-    public Task Handle(PqrClosedDomainEvent e, CancellationToken ct) =>
+    public Task Handle(PqrClosedDomainEvent e, IMessageBus bus, CancellationToken ct) =>
         bus.PublishAsync(new PqrClosedIntegrationEvent(e.PqrId, e.ClosedAtUtc)).AsTask();
 }
 ```
 
-The publish enrolls in the outbox because it runs inside the command's transaction on the module's
-Wolverine-enrolled `DbContext`.
+Register domain-event handlers explicitly per module (e.g. `discovery.IncludeType<...>()`, like
+`AddAdminHandlers`) — the same mechanism as integration-event consumers.
 
 ## Integration events (cross-module) — the reliable flow
 
@@ -174,8 +184,9 @@ and it is the door that becomes a remote client later.
 ## Do / Don't
 
 - **Do** use integration events when another module must react.
-- **Do** publish through the outbox (domain-event → `IMessageBus.PublishAsync` in the command's
-  transaction, or `IDbContextOutbox<T>` + `SaveChangesAndFlushMessagesAsync()`) — never fire-and-forget.
+- **Do** publish through the outbox — never fire-and-forget. Domain events reach it automatically via
+  the unit of work (`WolverineUnitOfWork<T>` → `IDbContextOutbox<T>` + `SaveChangesAndFlushMessagesAsync()`,
+  same tx as the aggregate); integration events via `IMessageBus.PublishAsync` in the command/handler.
 - **Do** make every handler idempotent (inbox + natural key).
 - **Do** use the facade for synchronous cross-module reads.
 - **Don't** use a domain event to reach another module.

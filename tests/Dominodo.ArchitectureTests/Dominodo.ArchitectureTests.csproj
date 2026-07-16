@@ -5,6 +5,11 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
+  <!-- Needed so tests can reference ControllerBase when asserting controllers live only in *.Api. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="coverlet.collector">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -23,13 +28,16 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\src\Shared\Dominodo.Shared.Abstractions\Dominodo.Shared.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Dominodo.Shared.Application\Dominodo.Shared.Application.csproj" />
     <ProjectReference Include="..\..\src\Shared\Dominodo.Shared.Infrastructure\Dominodo.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Users\Dominodo.Users.Domain\Dominodo.Users.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Users\Dominodo.Users.Application\Dominodo.Users.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Users\Dominodo.Users.Api\Dominodo.Users.Api.csproj" />
     <ProjectReference Include="..\..\src\Modules\Users\Dominodo.Users.Contracts\Dominodo.Users.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Modules\Users\Dominodo.Users.Persistence\Dominodo.Users.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Domain\Dominodo.Admin.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Application\Dominodo.Admin.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Api\Dominodo.Admin.Api.csproj" />
     <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Contracts\Dominodo.Admin.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Persistence\Dominodo.Admin.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Adapters\Dominodo.Adapters.Email\Dominodo.Adapters.Email.csproj" />

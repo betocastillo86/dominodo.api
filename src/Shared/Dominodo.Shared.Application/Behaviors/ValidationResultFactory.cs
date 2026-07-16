@@ -1,6 +1,6 @@
 using Dominodo.Shared.Kernel;
 
-namespace Dominodo.Shared.Infrastructure.Behaviors;
+namespace Dominodo.Shared.Application.Behaviors;
 
 internal static class ValidationResultFactory
 {

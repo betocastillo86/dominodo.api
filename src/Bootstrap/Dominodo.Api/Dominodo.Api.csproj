@@ -20,11 +20,14 @@
     <ProjectReference Include="..\..\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\Shared\Dominodo.Shared.Abstractions\Dominodo.Shared.Abstractions.csproj" />
     <ProjectReference Include="..\..\Shared\Dominodo.Shared.Infrastructure\Dominodo.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\Dominodo.Shared.Application\Dominodo.Shared.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup Label="Modules">
+    <ProjectReference Include="..\..\Modules\Users\Dominodo.Users.Api\Dominodo.Users.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Users\Dominodo.Users.Application\Dominodo.Users.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Users\Dominodo.Users.Persistence\Dominodo.Users.Persistence.csproj" />
+    <ProjectReference Include="..\..\Modules\Admin\Dominodo.Admin.Api\Dominodo.Admin.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Admin\Dominodo.Admin.Application\Dominodo.Admin.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Admin\Dominodo.Admin.Persistence\Dominodo.Admin.Persistence.csproj" />
   </ItemGroup>

@@ -1,5 +1,4 @@
 using Dominodo.Shared.Abstractions;
-using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Kernel;
 using Dominodo.Shared.Kernel.Messaging;
 using Dominodo.Users.Application.Users.Login;

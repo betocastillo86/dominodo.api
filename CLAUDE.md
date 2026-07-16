@@ -17,13 +17,16 @@ minimal change.
 5. **Boundaries are enforced by tests, not convention.** `Dominodo.ArchitectureTests` fails the
    build when a rule above is violated. Run it before considering any structural change done.
 
-## Module anatomy — four projects
+## Module anatomy — five projects
 
 ```
 Modules/<Module>/
   Dominodo.<Module>.Domain        # aggregates, value objects, domain events, domain-owned ports
   Dominodo.<Module>.Application   # CQRS commands/queries + handlers, validators, ports,
                                   #   INTERNAL IModuleApi impl. Everything here is `internal`.
+                                  #   NO ASP.NET, NO Shared.Infrastructure.
+  Dominodo.<Module>.Api           # the module's inbound HTTP adapter: controllers ONLY. Dispatches the
+                                  #   Application's internal commands via ISender (granted by InternalsVisibleTo).
   Dominodo.<Module>.Contracts     # PUBLIC surface ONLY: integration events + IModuleApi + public DTOs
   Dominodo.<Module>.Persistence   # the module's own adapter: DbContext (own schema), repos, EF config, migrations
 ```
@@ -33,20 +36,24 @@ Modules/<Module>/
 | Project                 | May reference                                                                      |
 | ----------------------- | ---------------------------------------------------------------------------------- |
 | `*.Domain`              | `Shared.Kernel` only                                                               |
-| `*.Application`         | own `Domain`, `Shared.Kernel`, `Shared.Abstractions`, `Shared.Infrastructure`, other modules' `*.Contracts` |
+| `*.Application`         | own `Domain`, `Shared.Kernel`, `Shared.Abstractions`, `Shared.Application`, other modules' `*.Contracts`. **NOT** `Shared.Infrastructure`, **NOT** ASP.NET |
+| `*.Api`                 | own `Application`, `Shared.Infrastructure`, `Shared.Kernel`; `FrameworkReference` to `Microsoft.AspNetCore.App`. The only module project with controllers |
 | `*.Contracts`           | `Shared.Kernel` (keep thin)                                                        |
 | `*.Persistence`         | own `Application`, own `Domain`, `Shared.Infrastructure`                           |
 | `Adapters.*`            | `Shared.Abstractions`, `Shared.Kernel`                                             |
+| `Shared.Application`    | `Shared.Kernel` (+ MediatR, FluentValidation, Logging.Abstractions). Application-layer plumbing (validation / UoW / logging behaviors). **NOT** infra, **NOT** ASP.NET |
 | `Shared.Infrastructure` | `Shared.Kernel`, `Shared.Abstractions`                                             |
 | `Dominodo.Api` (host)   | everything (composition root only — the ONLY project referencing `Adapters.*` and `*.Persistence`) |
 
 Also: MediatR requests/handlers are `internal` — a module cannot dispatch another module's requests.
 
-**Controllers live in the module's `Application` project** (registered with the host via
-`AddApplicationPart`), because only that assembly can dispatch the module's `internal` MediatR
-commands via `ISender`. That is why `*.Application` references `Shared.Infrastructure` — for the
-HTTP helpers its controllers use (`ErrorResults.ToProblem`) — and takes a `FrameworkReference` to
-`Microsoft.AspNetCore.App`. It still must **never** reference any `*.Persistence`.
+**Controllers live in the module's `*.Api` project**, registered with the host via `AddApplicationPart`.
+`*.Api` references `Shared.Infrastructure` (for the HTTP helpers its controllers use, e.g.
+`ErrorResults.ToProblem`) and takes a `FrameworkReference` to `Microsoft.AspNetCore.App`. It dispatches
+the module's `internal` MediatR commands via `ISender` — access granted by an `InternalsVisibleTo` on
+`*.Application`, so commands/queries stay `internal`. `*.Application` itself references **neither**
+`Shared.Infrastructure` **nor** ASP.NET; its application-layer plumbing (the validation / UoW / logging
+MediatR behaviors) lives in `Shared.Application`.
 
 ## Architecture reference — read the doc BEFORE working in that area
 
@@ -73,7 +80,11 @@ The full index and solution map is in `docs/architecture/README.md`.
 
 - Commands, queries, handlers, and the facade implementation are `internal`.
 - Handlers return `Result` / `Result<T>` — expected failures are values, not exceptions.
-- Handlers do **not** call `SaveChangesAsync`; the `UnitOfWorkBehavior` owns the transaction.
+- Handlers do **not** call `SaveChangesAsync`; the `UnitOfWorkBehavior` owns the transaction. The
+  unit of work routes through the module's Wolverine outbox, so any domain events raised by the
+  saved aggregates are persisted transactionally and delivered async/durable — not in-process.
+- Domain events are **not** MediatR notifications. They go to the module's durable outbox (same tx as
+  the aggregate) and are handled async by in-module **Wolverine** handlers. See `docs/architecture/07`.
 - Cross-module read → call the other module's `IModuleApi` from its `Contracts`. Cross-module write
   → publish an integration event. Never reference another module's non-`Contracts` project.
 - One command/query + validator + handler per use case, colocated in a feature folder.

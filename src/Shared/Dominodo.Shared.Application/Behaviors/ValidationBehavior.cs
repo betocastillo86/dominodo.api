@@ -2,7 +2,7 @@ using Dominodo.Shared.Kernel;
 using FluentValidation;
 using MediatR;
 
-namespace Dominodo.Shared.Infrastructure.Behaviors;
+namespace Dominodo.Shared.Application.Behaviors;
 
 internal sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>

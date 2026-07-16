@@ -114,7 +114,7 @@ internal sealed class GetPqrByIdQueryHandler(IPqrsReadContext db, ITenantContext
 
 ## Pipeline behaviors
 
-Behaviors wrap every request in a defined order. They live in `Shared.Infrastructure` and are
+Behaviors wrap every request in a defined order. They live in `Shared.Application` and are
 registered once for all modules.
 
 ### ValidationBehavior
@@ -154,8 +154,9 @@ commits when the command completes; an **exception** (a true abort) propagates p
 no commit happens. An expected-failure `Result` is a normal outcome — not a rollback signal — so it
 **still commits** any state the handler deliberately recorded (e.g. a failed OTP attempt that must be
 counted). The convention is: handlers **guard-first, mutate-last, and throw to abort**. Committing is
-also where each module's domain events are dispatched and its outbox is flushed
-(see [07](./07-inter-module-communication.md)). Queries are not wrapped.
+also where each module's domain events are persisted to its Wolverine outbox (same transaction as the
+aggregate) and then delivered async/durable (see [07](./07-inter-module-communication.md)). Queries
+are not wrapped.
 
 Because each module owns its own `DbContext`/`IUnitOfWork`, the behavior resolves **all** registered
 units of work and saves each. A command only mutates its own module's context; the others have no
@@ -174,7 +175,7 @@ internal sealed class UnitOfWorkBehavior<TRequest, TResponse>(IEnumerable<IUnitO
 
         var response = await next();              // throws → propagates, no commit (rollback)
         foreach (var unitOfWork in unitsOfWork)   // each module's DbContext; unchanged ones no-op
-            await unitOfWork.SaveChangesAsync(ct); // dispatches domain events + flushes outbox
+            await unitOfWork.SaveChangesAsync(ct); // enrols domain events in the outbox (same tx), then flushes
         return response;
     }
 }
@@ -204,10 +205,11 @@ public static IServiceCollection AddPqrsModule(this IServiceCollection services,
 }
 ```
 
-Shared behaviors are registered once by the host over the open generic pipeline:
+Shared behaviors are registered once by the host over the open generic pipeline, via
+`AddSharedApplication()`:
 
 ```csharp
-// Dominodo.Shared.Infrastructure
+// Dominodo.Shared.Application — AddSharedApplication()
 services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 services.AddTransient(typeof(IPipelineBehavior<,>), typeof(UnitOfWorkBehavior<,>));

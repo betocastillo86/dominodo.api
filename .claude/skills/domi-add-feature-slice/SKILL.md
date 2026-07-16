@@ -1,6 +1,6 @@
 ---
 name: domi-add-feature-slice
-description: Scaffold a CQRS use case end to end in a Dominodo module — the command or query record, its FluentValidation validator, the internal handler returning Result<T>, the thin controller action (with ProblemDetails mapping), and any public DTO in Contracts. Use ONLY in the Dominodo (dominodo.api) repo when the user wants to add a use case, command, query, endpoint, or feature to an existing module. Dominodo-specific — do not use for Keller Postman services.
+description: Scaffold a CQRS use case end to end in a Dominodo module — the command or query record, its FluentValidation validator, the internal handler returning Result<T>, the thin controller action in the module's *.Api project (with ProblemDetails mapping), and any public DTO in Contracts. Use ONLY in the Dominodo (dominodo.api) repo when the user wants to add a use case, command, query, endpoint, or feature to an existing module. Dominodo-specific — do not use for Keller Postman services.
 ---
 
 # Add a CQRS feature slice to a Dominodo module
@@ -41,7 +41,11 @@ folder: `Dominodo.<Module>.Application/<Aggregate>/<UseCase>/`.
      `IModuleApi` (from its `Contracts`) needed for a cross-module **read**.
    - Return `Result`/`Result<T>` — expected failures are `Error` values, not exceptions.
    - **Commands:** mutate/add the aggregate via the repository and return. Do **not** call
-     `SaveChangesAsync` — the `UnitOfWorkBehavior` owns the transaction and flushes the outbox.
+     `SaveChangesAsync` — the `UnitOfWorkBehavior` owns the transaction. Any domain events the aggregate
+     `Raise`s are collected by the unit of work, persisted to the module's Wolverine outbox in the same
+     tx, and delivered **async** to in-module Wolverine handlers (NOT MediatR). If this use case needs a
+     reaction to a domain event, add a **public** Wolverine handler (like the integration-event
+     consumers) and register it via the module's discovery helper — see `docs/architecture/07`.
    - **Queries:** project straight into a DTO, read-only, `AsNoTracking()`, scoped with
      `.ForCurrentTenant(tenant)` (see `docs/architecture/09-multitenancy.md`).
    - Cross-module write → publish an integration event from `Contracts` (never dispatch another
@@ -50,9 +54,12 @@ folder: `Dominodo.<Module>.Application/<Aggregate>/<UseCase>/`.
 4. **DTO** — if the shape is internal to the module, keep it in `Application`. If another module
    consumes it (via the facade or an event), put it in `Contracts`.
 
-5. **Controller action** — a thin action in the module's controller (hosted by `Dominodo.Api`) that
-   binds the request, sends it via MediatR, and maps the `Result` to an HTTP response / ProblemDetails
-   using the shared mapping. No business logic in the controller.
+5. **Controller action** — a thin action in a controller in the module's **`Dominodo.<Module>.Api`**
+   project (namespace `Dominodo.<Module>.Api.Controllers`, hosted by `Dominodo.Api`) that binds the
+   request, sends it via `ISender` (MediatR), and maps the `Result` to an HTTP response / ProblemDetails
+   via `ErrorResults.ToProblem` (from `Shared.Infrastructure.Http`). No business logic in the controller.
+   The controller can build the `internal` command/query because `*.Application` grants
+   `InternalsVisibleTo` to `*.Api`. If the module has no controller for this aggregate yet, add one.
 
 6. **Tests — opt-in only.** Do **not** generate tests as part of this slice. Ship the code without any
    unit/integration/E2E tests **unless the user explicitly asked for them** in this request. If they did,
@@ -67,8 +74,10 @@ folder: `Dominodo.<Module>.Application/<Aggregate>/<UseCase>/`.
 
 ## Guardrails
 
-- Request, validator, handler, facade impl stay `internal`.
-- Never call `SaveChangesAsync` in a handler.
+- Request, validator, handler, facade impl stay `internal`; the controller lives in `*.Api` (never in
+  `*.Application`).
+- Never call `SaveChangesAsync` in a handler — the `UnitOfWorkBehavior` owns the transaction and routes
+  domain events through the durable outbox.
 - Never mutate state in a query handler.
 - Cross-module read → `IModuleApi`; cross-module write → integration event; never a direct reference
-  to another module's `Domain`/`Application`/`Persistence`.
+  to another module's `Domain`/`Application`/`Api`/`Persistence`.

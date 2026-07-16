@@ -22,16 +22,19 @@ place and extraction is a mechanical change, not a rewrite.
 - **Boundaries force good design.** Being unable to `new` up another module's entity or query its
   tables pushes every interaction through a deliberate contract.
 
-## Module anatomy — four projects
+## Module anatomy — five projects
 
-Every module is its own miniature clean architecture, expressed as four projects:
+Every module is its own miniature clean architecture, expressed as five projects:
 
 ```
 Modules/Pqrs/
   Dominodo.Pqrs.Domain          # the model: aggregates, value objects, domain events,
                                 #   domain-owned ports (e.g. IPqrRepository)
   Dominodo.Pqrs.Application     # use cases: commands/queries + handlers, validators,
-                                #   application ports, the INTERNAL implementation of the facade
+                                #   application ports, the INTERNAL implementation of the facade.
+                                #   No ASP.NET, no Shared.Infrastructure.
+  Dominodo.Pqrs.Api             # inbound HTTP adapter: controllers ONLY (dispatch the Application's
+                                #   internal commands via ISender, granted by InternalsVisibleTo)
   Dominodo.Pqrs.Contracts       # the PUBLIC surface: integration events + IPqrsModuleApi
   Dominodo.Pqrs.Persistence     # the module's own adapter: PqrsDbContext (schema `pqrs`),
                                 #   repositories, EF configurations, migrations
@@ -50,7 +53,17 @@ Defines **application-owned ports** — interfaces describing what this module n
 world when the need is specific to the module. Also contains the **internal implementation** of the
 module's public facade (`IPqrsModuleApi`), which delegates to the module's own MediatR.
 
-Everything here is `internal`. Other modules cannot see or dispatch these requests.
+Everything here is `internal`. Other modules cannot see or dispatch these requests. It references
+neither `Shared.Infrastructure` nor ASP.NET — its cross-cutting plumbing (the MediatR
+validation/UoW/logging behaviors) lives in `Shared.Application`.
+
+### Api
+
+The module's **inbound HTTP adapter** — its controllers, and nothing else. It references its own
+`Application` plus `Shared.Infrastructure` (for HTTP helpers like `ErrorResults.ToProblem`) and takes a
+`FrameworkReference` to `Microsoft.AspNetCore.App`. Controllers dispatch the `Application`'s `internal`
+MediatR commands via `ISender`; access is granted by an `InternalsVisibleTo` on `Application`, so the
+requests stay `internal`. The host registers this assembly via `AddApplicationPart`.
 
 ### Contracts
 
@@ -83,8 +96,8 @@ modules ─┼─▶ IPqrsModuleApi              (internal handlers)     (aggreg
         └─────────────────────────────────────────────────────────────────────┘
 ```
 
-- Inbound to the module: HTTP controllers (hosted by `Dominodo.Api`) and message consumers translate
-  external requests into MediatR commands/queries.
+- Inbound to the module: HTTP controllers (in `<Module>.Api`, hosted by `Dominodo.Api`) and message
+  consumers translate external requests into MediatR commands/queries.
 - Outbound from the module: integration events (async) and its published DTOs.
 - Everything between `Contracts` and `Persistence` is invisible to the rest of the system.
 
@@ -112,7 +125,7 @@ Because the seams already exist, extraction is mechanical:
    from durable local queues to a real broker (config only). Handlers keep subscribing to the same event types.
 3. **Data.** The module already owns its schema with no cross-module foreign keys, so its tables move
    to a dedicated database as-is.
-4. **Host.** Give the module its own host project that references its four projects and wires the
+4. **Host.** Give the module its own host project that references its five projects and wires the
    same DI. The composition root is the only place that changes shape.
 
 The application code inside the module — domain, handlers, validators — does not change.

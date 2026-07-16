@@ -1,13 +1,11 @@
 using Asp.Versioning;
 using Dominodo.Shared.Abstractions;
 using Dominodo.Shared.Infrastructure.Auth;
-using Dominodo.Shared.Infrastructure.Behaviors;
 using Dominodo.Shared.Infrastructure.Http;
 using Dominodo.Shared.Infrastructure.Multitenancy;
 using Dominodo.Shared.Infrastructure.Persistence;
 using Dominodo.Shared.Infrastructure.Time;
 using Dominodo.Shared.Kernel;
-using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -15,7 +13,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using System.Reflection;
 using System.Text;
 
 namespace Dominodo.Shared.Infrastructure;
@@ -35,14 +32,6 @@ public static class DependencyInjection
         services.AddSingleton<ITenantDirectory, NullTenantDirectory>();
 
         services.AddSingleton<AuditableEntityInterceptor>();
-        services.AddSingleton<DispatchDomainEventsInterceptor>();
-
-        services.AddMediatR(cfg =>
-            cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
-
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(UnitOfWorkBehavior<,>));
 
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddProblemDetails();

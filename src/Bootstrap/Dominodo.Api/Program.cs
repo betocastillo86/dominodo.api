@@ -3,6 +3,7 @@ using Dominodo.Adapters.WhatsApp;
 using Dominodo.Admin.Application;
 using Dominodo.Admin.Persistence;
 using Dominodo.Api;
+using Dominodo.Shared.Application;
 using Dominodo.Shared.Infrastructure;
 using Dominodo.Users.Application;
 using Dominodo.Users.Persistence;
@@ -17,6 +18,7 @@ builder.Host.UseSerilog((ctx, cfg) =>
     cfg.ReadFrom.Configuration(ctx.Configuration)
        .Enrich.FromLogContext());
 
+builder.Services.AddSharedApplication();
 builder.Services.AddSharedInfrastructure(builder.Configuration);
 builder.Services.AddDominodoTelemetry("dominodo-api");
 
@@ -61,8 +63,9 @@ builder.Host.UseResourceSetupOnStartup();
 
 builder.Services
     .AddControllers()
-    // Module controllers live in each module's Application assembly — register them as parts.
-    .AddApplicationPart(Dominodo.Users.Application.DependencyInjection.ApplicationAssembly);
+    // Module controllers live in each module's *.Api assembly — register them as parts.
+    // (Admin.Api added here once it exposes controllers.)
+    .AddApplicationPart(typeof(Dominodo.Users.Api.IUsersApiMarker).Assembly);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

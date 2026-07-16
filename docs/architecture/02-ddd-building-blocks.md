@@ -106,15 +106,17 @@ public sealed class Email : ValueObject
 
 ### Domain events
 
-A record of something that happened **inside a single module**. Raised by an aggregate, dispatched
-in-process within the same transaction (see [03 — CQRS](./03-cqrs-mediatr.md) and
+A record of something that happened **inside a single module**. Raised by an aggregate; when the
+command commits, the unit of work persists it to the module's Wolverine outbox in the **same
+transaction** as the aggregate, and it is delivered **async/durable** to an in-module Wolverine handler
+(see [03 — CQRS](./03-cqrs-mediatr.md) and
 [07 — Inter-Module Communication](./07-inter-module-communication.md)). Domain events never cross
 module boundaries — that is what integration events are for.
 
 ```csharp
 namespace Dominodo.Shared.Kernel;
 
-public interface IDomainEvent : INotification; // MediatR marker
+public interface IDomainEvent; // plain marker — NOT a MediatR notification; routed by Wolverine
 ```
 
 ```csharp

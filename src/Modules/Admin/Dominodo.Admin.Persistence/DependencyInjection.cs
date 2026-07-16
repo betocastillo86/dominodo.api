@@ -17,7 +17,10 @@ public static class DependencyInjection
     // AddAdminMessaging (below) through Wolverine's EF integration, so the module's outbox is enrolled.
     public static IServiceCollection AddAdminPersistence(this IServiceCollection services)
     {
-        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AdminDbContext>());
+        // The unit of work routes SaveChanges through Wolverine's durable outbox (persists the
+        // aggregate changes + domain-event envelopes in one transaction, then flushes async).
+        services.AddScoped<IUnitOfWork>(sp =>
+            new WolverineUnitOfWork<AdminDbContext>(sp.GetRequiredService<IDbContextOutbox<AdminDbContext>>()));
         services.AddScoped<INotificationDeliveryRepository, NotificationDeliveryRepository>();
 
         return services;
@@ -35,8 +38,7 @@ public static class DependencyInjection
                 sql => sql.MigrationsHistoryTable("__ef_migrations", AdminDbContext.Schema));
 
             options.AddInterceptors(
-                sp.GetRequiredService<AuditableEntityInterceptor>(),
-                sp.GetRequiredService<DispatchDomainEventsInterceptor>());
+                sp.GetRequiredService<AuditableEntityInterceptor>());
         });
 
         opts.PersistMessagesWithSqlServer(connectionString, role: MessageStoreRole.Ancillary)

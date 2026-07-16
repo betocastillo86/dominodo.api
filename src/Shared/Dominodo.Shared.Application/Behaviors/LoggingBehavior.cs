@@ -2,7 +2,7 @@ using Dominodo.Shared.Kernel;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
-namespace Dominodo.Shared.Infrastructure.Behaviors;
+namespace Dominodo.Shared.Application.Behaviors;
 
 internal sealed class LoggingBehavior<TRequest, TResponse>(ILogger<TRequest> logger)
     : IPipelineBehavior<TRequest, TResponse>

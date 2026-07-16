@@ -42,10 +42,12 @@ dominodo.api/
 │   │   ├── Dominodo.Shared.Kernel          # DDD base types: Entity, AggregateRoot, ValueObject,
 │   │   │                                   #   IDomainEvent, Result, Error, ITenantContext
 │   │   ├── Dominodo.Shared.Abstractions    # shared ports: IEmailSender, IWhatsAppSender,
-│   │   │                                   #   IFileStorage, IPushSender, IClock
+│   │   │                                   #   IFileStorage, IPushSender, IClock, JwtOptions
+│   │   ├── Dominodo.Shared.Application      # application-layer plumbing: MediatR behaviors
+│   │   │                                   #   (validation / UoW / logging). No infra, no ASP.NET
 │   │   └── Dominodo.Shared.Infrastructure  # shared plumbing: base DbContext, EF interceptors,
-│   │                                       #   MediatR behaviors, Wolverine + outbox wiring,
-│   │                                       #   tenancy, ProblemDetails/error mapping
+│   │                                       #   Wolverine + outbox wiring (WolverineUnitOfWork),
+│   │                                       #   tenancy, ProblemDetails/error mapping, JWT auth
 │   ├── Adapters/                    # reusable outbound adapters, one project per external dependency
 │   │   ├── Dominodo.Adapters.Email
 │   │   ├── Dominodo.Adapters.WhatsApp
@@ -56,7 +58,10 @@ dominodo.api/
 │           ├── Dominodo.<Module>.Domain        # aggregates, value objects, domain events,
 │           │                                   #   domain-owned ports (e.g. IPqrRepository)
 │           ├── Dominodo.<Module>.Application    # CQRS commands/queries/handlers, validators,
-│           │                                   #   application ports, INTERNAL IModuleApi impl
+│           │                                   #   application ports, INTERNAL IModuleApi impl.
+│           │                                   #   No ASP.NET, no Shared.Infrastructure
+│           ├── Dominodo.<Module>.Api            # inbound HTTP adapter: controllers ONLY
+│           │                                   #   (dispatch Application internals via InternalsVisibleTo)
 │           ├── Dominodo.<Module>.Contracts      # PUBLIC surface: integration events + IModuleApi
 │           └── Dominodo.<Module>.Persistence    # the module's own adapter: DbContext + schema,
 │                                               #   repositories, EF configurations, migrations
@@ -79,10 +84,12 @@ dominodo.api/
 | Project              | May reference                                                        |
 | -------------------- | ------------------------------------------------------------------- |
 | `*.Domain`           | `Shared.Kernel` only                                                |
-| `*.Application`      | own `Domain`, `Shared.Kernel`, `Shared.Abstractions`, `Shared.Infrastructure` (HTTP helpers for its controllers), other modules' `*.Contracts` |
+| `*.Application`      | own `Domain`, `Shared.Kernel`, `Shared.Abstractions`, `Shared.Application`, other modules' `*.Contracts`. **Not** `Shared.Infrastructure`, **not** ASP.NET |
+| `*.Api`              | own `Application`, `Shared.Infrastructure`, `Shared.Kernel`; `FrameworkReference` to ASP.NET. The only module project with controllers |
 | `*.Contracts`        | `Shared.Kernel` (kept as thin as possible)                          |
 | `*.Persistence`      | own `Application`, own `Domain`, `Shared.Infrastructure`            |
 | `Adapters.*`         | `Shared.Abstractions`, `Shared.Kernel`                              |
+| `Shared.Application` | `Shared.Kernel` (+ MediatR, FluentValidation). No infra, no ASP.NET |
 | `Shared.Infrastructure` | `Shared.Kernel`, `Shared.Abstractions`                           |
 | `Dominodo.Api` (host)| everything (composition root only)                                  |
 
@@ -103,8 +110,8 @@ Additional invariants:
 | Notify another module of a change (write)     | an integration event in `<Module>.Contracts`     |
 | Persist an aggregate                          | `<Module>.Persistence`                            |
 | Call an external system (email, WhatsApp, …)  | a shared port in `Shared.Abstractions` + an adapter in `Adapters.*` |
-| Add a cross-cutting behavior                  | a MediatR behavior in `Shared.Infrastructure`     |
-| Expose an HTTP endpoint                        | a controller in the module (hosted by `Dominodo.Api`) |
+| Add a cross-cutting behavior                  | a MediatR behavior in `Shared.Application`        |
+| Expose an HTTP endpoint                        | a controller in `<Module>.Api` (hosted by `Dominodo.Api`) |
 
 ## Documents
 

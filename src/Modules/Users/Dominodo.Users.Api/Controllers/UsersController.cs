@@ -5,7 +5,7 @@ using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Dominodo.Users.Application.Controllers;
+namespace Dominodo.Users.Api.Controllers;
 
 [ApiController]
 [Route("api/v{version:apiVersion}/users")]

@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Application also hosts the module's inbound HTTP adapters (controllers): they must live in
-       this assembly to dispatch the module's internal MediatR commands via ISender. -->
+  <!-- The module's controllers live in the sibling Dominodo.Users.Api project. They dispatch this
+       assembly's internal MediatR commands/queries via ISender, so grant Users.Api access to
+       internals rather than making the requests public. -->
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <InternalsVisibleTo Include="Dominodo.Users.Api" />
   </ItemGroup>
 
   <ItemGroup>
@@ -22,7 +23,7 @@
     <ProjectReference Include="..\Dominodo.Users.Contracts\Dominodo.Users.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Abstractions\Dominodo.Shared.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Infrastructure\Dominodo.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Application\Dominodo.Shared.Application.csproj" />
   </ItemGroup>
 
 </Project>

@@ -32,4 +32,32 @@ public sealed class LayerBoundaryTests
         result.IsSuccessful.Should().BeTrue(
             because: string.Join(", ", result.FailingTypeNames ?? []));
     }
+
+    [Fact]
+    public void Application_ShouldNotDependOnSharedInfrastructure()
+    {
+        var result = Types.InAssemblies(
+            [
+                typeof(Users.Application.DependencyInjection).Assembly,
+                typeof(Admin.Application.DependencyInjection).Assembly,
+            ])
+            .ShouldNot()
+            .HaveDependencyOn(SharedInfrastructure)
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            because: string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void SharedApplication_ShouldNotDependOnInfrastructureOrAspNet()
+    {
+        var result = Types.InAssembly(typeof(Shared.Application.DependencyInjection).Assembly)
+            .ShouldNot()
+            .HaveDependencyOnAny(SharedInfrastructure, "Microsoft.AspNetCore")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(
+            because: string.Join(", ", result.FailingTypeNames ?? []));
+    }
 }
