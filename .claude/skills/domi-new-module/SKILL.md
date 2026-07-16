@@ -1,6 +1,6 @@
 ---
 name: domi-new-module
-description: Scaffold a new bounded-context module in the Dominodo modular monolith — the four projects (Domain, Application, Contracts, Persistence), their test projects, DbContext + schema, DI wiring, and Contracts skeleton, wired into the host and solution. Use ONLY in the Dominodo (dominodo.api) repo when the user wants to create/add a new module or bounded context. This is Dominodo-specific — do not use for Keller Postman services.
+description: Scaffold a new bounded-context module in the Dominodo modular monolith — the four projects (Domain, Application, Contracts, Persistence), DbContext + schema, DI wiring, and Contracts skeleton, wired into the host and solution. Use ONLY in the Dominodo (dominodo.api) repo when the user wants to create/add a new module or bounded context. This is Dominodo-specific — do not use for Keller Postman services.
 ---
 
 # Scaffold a new Dominodo module
@@ -51,9 +51,11 @@ management — never pin versions in the csproj).
    - `Add<Module>Persistence(this IServiceCollection, IConfiguration)` registering the DbContext and repositories.
    - Repository implementations of the domain-owned ports; `EntityConfigurations/` for EF `IEntityTypeConfiguration`.
 
-5. **Test projects** under `tests/`:
-   - `Dominodo.<Module>.UnitTests` (references `Application`, `Domain`, `TestUtilities`).
-   - `Dominodo.<Module>.IntegrationTests` (WebApplicationFactory + WireMock — see `docs/architecture/10-testing.md`).
+5. **No test projects by default.** Tests are opt-in (see `docs/architecture/10-testing.md`). Do **not**
+   scaffold `Dominodo.<Module>.UnitTests` / `Dominodo.<Module>.IntegrationTests` when creating a module —
+   create them only if the user explicitly asks for unit/integration coverage, at that point. Boundaries
+   are enforced by `Dominodo.ArchitectureTests`; behavioral coverage lives in the standalone E2E suite
+   under `tests/e2e/` (its own solution, added deliberately — see `tests/e2e/README.md`).
 
 6. **Wire into the host** `src/Bootstrap/Dominodo.Api`: call `services.Add<Module>Module(config)` in
    composition. The host is the ONLY project that references `*.Persistence`.

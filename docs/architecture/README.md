@@ -61,11 +61,18 @@ dominodo.api/
 │           └── Dominodo.<Module>.Persistence    # the module's own adapter: DbContext + schema,
 │                                               #   repositories, EF configurations, migrations
 └── tests/
-    ├── Dominodo.<Module>.UnitTests
-    ├── Dominodo.<Module>.IntegrationTests       # WebApplicationFactory + WireMock
-    ├── Dominodo.TestUtilities                   # AutoFixture/AutoMoq, FluentAssertions, assertions
-    └── Dominodo.ArchitectureTests               # NetArchTest: enforces module & layer boundaries
+    ├── Dominodo.ArchitectureTests               # NetArchTest: enforces module & layer boundaries (always)
+    └── e2e/                                      # standalone black-box HTTP suite (own solution,
+                                                  #   zero coupling with src/ — see tests/e2e/README.md)
+    # Dominodo.<Module>.UnitTests / .IntegrationTests + Dominodo.TestUtilities are NOT present by
+    # default — they are created on demand, only when unit/integration tests are explicitly requested.
 ```
+
+> **Tests are opt-in.** No test is generated automatically as a side effect of a feature or prompt.
+> **Architecture tests** (boundary enforcement, Rule #5) are always maintained; everything else —
+> **E2E** and any **unit/integration** coverage — is written **only when explicitly requested**, and
+> only for the cases named. Test projects are created on first real need, not scaffolded speculatively.
+> See [10 — Testing](./10-testing.md).
 
 ## Dependency rules (enforced by architecture tests)
 
@@ -113,7 +120,7 @@ Additional invariants:
 | 07 | [Inter-Module Communication](./07-inter-module-communication.md) | Domain vs integration events, outbox, sync facade |
 | 08 | [Error Handling](./08-error-handling.md) | RESTful ProblemDetails mapping |
 | 09 | [Multitenancy](./09-multitenancy.md) | TenantId, ITenantContext, on-demand scoping |
-| 10 | [Testing](./10-testing.md) | Unit, integration (WireMock), architecture tests |
+| 10 | [Testing](./10-testing.md) | Opt-in testing: architecture tests (always), E2E + unit/integration on demand |
 | 11 | [Cross-Cutting Concerns](./11-cross-cutting.md) | Tracing, idempotency, pagination, versioning, health |
 
 ## Naming conventions

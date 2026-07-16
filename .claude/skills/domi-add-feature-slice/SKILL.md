@@ -1,6 +1,6 @@
 ---
 name: domi-add-feature-slice
-description: Scaffold a CQRS use case end to end in a Dominodo module — the command or query record, its FluentValidation validator, the internal handler returning Result<T>, the thin controller action (with ProblemDetails mapping), any public DTO in Contracts, and the unit/integration tests. Use ONLY in the Dominodo (dominodo.api) repo when the user wants to add a use case, command, query, endpoint, or feature to an existing module. Dominodo-specific — do not use for Keller Postman services.
+description: Scaffold a CQRS use case end to end in a Dominodo module — the command or query record, its FluentValidation validator, the internal handler returning Result<T>, the thin controller action (with ProblemDetails mapping), and any public DTO in Contracts. Use ONLY in the Dominodo (dominodo.api) repo when the user wants to add a use case, command, query, endpoint, or feature to an existing module. Dominodo-specific — do not use for Keller Postman services.
 ---
 
 # Add a CQRS feature slice to a Dominodo module
@@ -54,14 +54,15 @@ folder: `Dominodo.<Module>.Application/<Aggregate>/<UseCase>/`.
    binds the request, sends it via MediatR, and maps the `Result` to an HTTP response / ProblemDetails
    using the shared mapping. No business logic in the controller.
 
-6. **Tests:**
-   - Unit test the handler (`Dominodo.<Module>.UnitTests`) — success and each `Error` path.
-   - Integration test the endpoint (`Dominodo.<Module>.IntegrationTests`) — WebApplicationFactory,
-     WireMock for external calls (see `docs/architecture/10-testing.md`).
+6. **Tests — opt-in only.** Do **not** generate tests as part of this slice. Ship the code without any
+   unit/integration/E2E tests **unless the user explicitly asked for them** in this request. If they did,
+   write only the cases they named, following `docs/architecture/10-testing.md` (unit → `Dominodo.<Module>.UnitTests`,
+   integration → `Dominodo.<Module>.IntegrationTests`, both created on first need; E2E → the separate
+   `tests/e2e/` suite, see `tests/e2e/README.md`).
 
 ## Verify before declaring done
 
-- `dotnet build` and the module's unit + integration tests pass.
+- `dotnet build` succeeds.
 - `Dominodo.ArchitectureTests` still passes (no leaked references, everything still `internal`).
 
 ## Guardrails

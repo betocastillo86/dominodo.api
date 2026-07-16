@@ -58,7 +58,7 @@ relevant one on demand before touching that concern. Do not guess a pattern; con
 | Communicate between modules (event or facade)   | `docs/architecture/07-inter-module-communication.md`|
 | Map errors to HTTP responses                    | `docs/architecture/08-error-handling.md`            |
 | Anything touching TenantId / scoping            | `docs/architecture/09-multitenancy.md`              |
-| Write unit / integration / architecture tests   | `docs/architecture/10-testing.md`                   |
+| Write tests (only when explicitly asked)        | `docs/architecture/10-testing.md`                   |
 | Tracing, idempotency, pagination, versioning    | `docs/architecture/11-cross-cutting.md`             |
 
 The full index and solution map is in `docs/architecture/README.md`.
@@ -71,6 +71,9 @@ The full index and solution map is in `docs/architecture/README.md`.
 - Cross-module read → call the other module's `IModuleApi` from its `Contracts`. Cross-module write
   → publish an integration event. Never reference another module's non-`Contracts` project.
 - One command/query + validator + handler per use case, colocated in a feature folder.
+- **Tests are opt-in.** Never generate tests as a side effect of a feature, prompt, or refactor. Write
+  unit/integration/E2E tests **only when explicitly asked**, and only for the cases named. Architecture
+  tests (`Dominodo.ArchitectureTests`) are the sole exception — always maintained. See `docs/architecture/10-testing.md`.
 
 ## Naming conventions
 
