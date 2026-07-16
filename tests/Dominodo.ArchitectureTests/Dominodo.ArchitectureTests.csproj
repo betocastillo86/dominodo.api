@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NetArchTest.Rules" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Dominodo.Shared.Abstractions\Dominodo.Shared.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Shared\Dominodo.Shared.Infrastructure\Dominodo.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Users\Dominodo.Users.Domain\Dominodo.Users.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Users\Dominodo.Users.Application\Dominodo.Users.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Users\Dominodo.Users.Contracts\Dominodo.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Users\Dominodo.Users.Persistence\Dominodo.Users.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Domain\Dominodo.Admin.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Application\Dominodo.Admin.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Contracts\Dominodo.Admin.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Persistence\Dominodo.Admin.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Adapters\Dominodo.Adapters.Email\Dominodo.Adapters.Email.csproj" />
+    <ProjectReference Include="..\..\src\Adapters\Dominodo.Adapters.WhatsApp\Dominodo.Adapters.WhatsApp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

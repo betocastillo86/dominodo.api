@@ -37,8 +37,10 @@ technical debt; it is the barrier that stops a bug and its test from moving toge
 ## 2. Non-negotiable rules
 
 1. **Black box over HTTP.** The only contact point with the API is its HTTP surface. No `DbContext`, no
-   invoking handlers, no `WebApplicationFactory`. Those are already covered by the integration tests
-   inside `src/` (see `docs/architecture/10-testing.md`); this suite is **a different layer**.
+   invoking handlers, no `WebApplicationFactory`. This suite is **a distinct layer** from any in-process
+   unit/integration tests, which are opt-in and created only on explicit request
+   (see `docs/architecture/10-testing.md`); boundary enforcement is handled separately by the
+   architecture tests.
 2. **Zero code coupling with the API.** No project in this solution references a project under `src/`.
    Models are replicated by hand in `Dominodo.E2E.Clients`.
 3. **No codegen from OpenAPI.** Refit interfaces and models are written and maintained by hand.

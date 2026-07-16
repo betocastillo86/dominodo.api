@@ -44,9 +44,9 @@ Any operation that can be safely retried must be safe to run twice.
 
 - **Inbound HTTP writes** that require idempotency accept an `Idempotency-Key` header. The key +
   response is recorded; a repeat with the same key returns the stored result instead of acting again.
-- **Event consumers** dedupe by event id (or a natural key) — MassTransit delivers at least once, so a
-  consumer that creates or charges something must guard against reprocessing (an inbox table or a
-  unique constraint).
+- **Event consumers** dedupe by event id (or a natural key) — Wolverine delivers at least once, so a
+  consumer that creates or charges something must guard against reprocessing (Wolverine's durable inbox
+  plus a natural key / unique constraint).
 
 ```csharp
 internal sealed class RegisterPackageConsumer(ISender sender) : IConsumer<VisitorArrivedIntegrationEvent>
@@ -109,7 +109,7 @@ The host exposes liveness and readiness endpoints. Readiness aggregates each mod
 
 ```csharp
 builder.Services.AddHealthChecks()
-    .AddNpgSql(connectionString, name: "db")
+    .AddSqlServer(connectionString, name: "sql-server", tags: ["ready"])
     .AddCheck<BusHealthCheck>("bus");
 
 app.MapHealthChecks("/health/live",  new() { Predicate = _ => false });          // process is up
@@ -122,7 +122,7 @@ app.MapHealthChecks("/health/ready", new() { Predicate = c => c.Tags.Count == 0 
   `CorrelationId`, `TenantId` (when present), and request name. No string-concatenated messages —
   log with message templates and named properties.
 - **Metrics & traces**: OpenTelemetry exports traces and metrics (ASP.NET Core, `HttpClient`, EF Core,
-  MassTransit instrumentation) to the configured OTLP endpoint.
+  Wolverine instrumentation) to the configured OTLP endpoint.
 - These are registered once in a `AddDominodoTelemetry()` extension in `Shared.Infrastructure` and are
   identical across modules, so observability survives a module's extraction into its own service.
 

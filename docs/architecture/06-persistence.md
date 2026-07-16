@@ -33,7 +33,8 @@ internal sealed class PqrsDbContext(DbContextOptions<PqrsDbContext> options) : D
     {
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PqrsDbContext).Assembly);
-        // MassTransit EF outbox tables live in this schema too — see doc 07
+        // Wolverine's durable message storage lives in the "wolverine" schema, provisioned by the bus
+        // (not this module's EF migrations) — see doc 07.
     }
 }
 ```
@@ -58,7 +59,7 @@ internal sealed class PqrConfiguration : IEntityTypeConfiguration<Pqr>
 {
     public void Configure(EntityTypeBuilder<Pqr> builder)
     {
-        builder.ToTable("pqrs");
+        builder.ToTable("Pqrs");
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Subject).HasMaxLength(200).IsRequired();
         builder.Property(p => p.Body).IsRequired();
@@ -68,6 +69,28 @@ internal sealed class PqrConfiguration : IEntityTypeConfiguration<Pqr>
     }
 }
 ```
+
+### Table & column naming
+
+- **Tables are `PascalCase`, pluralized** — `RefreshTokens`, `RolePermissions`, `VerificationCodes`
+  (never `refresh_tokens`). Always set the name explicitly with `builder.ToTable("...")` rather than
+  relying on the `DbSet` property name.
+- **Columns are `PascalCase`** — the EF default from the property name; do not override to snake_case.
+- **Schemas are lowercase, single word** — `users`, `tenants`, `operations`, `admin` — set once per
+  `DbContext` via `modelBuilder.HasDefaultSchema(...)`.
+- The per-module migrations history table stays `__ef_migrations` (EF infrastructure table, not a
+  domain table).
+
+### Enums & the `Role.Scope` / `PlatformRoleAssignments` case (Users)
+
+- **Enums are stored as `int`** via `builder.Property(x => x.Scope).HasConversion<int>()`. `Role.Scope`
+  (`RoleScope { Platform = 0, Tenant = 1 }`) is persisted as the `int` column `Scope` on `Roles`, seeded
+  per role (`SuperAdmin = 0/Platform`, the rest `= 1/Tenant`).
+- **`PlatformRoleAssignments`** (`Id` Guid PK, `UserId` Guid, `RoleId` int) carries platform authority
+  by data: a unique index on `(UserId, RoleId)`, an index on `UserId`, and an internal FK to `Roles`
+  (`OnDelete: Restrict`). The bootstrap SuperAdmin is one seeded row here — no hardcoded user-id check.
+  The login token's `role` claim(s) are derived by joining these rows to `Roles` filtered by
+  `Scope = Platform`.
 
 ## Repository + Unit of Work
 
@@ -108,16 +131,24 @@ Cross-cutting persistence behavior lives in `Shared.Infrastructure` and is attac
   tracked aggregates through in-process MediatR (within the same transaction). See
   [07 — Inter-Module Communication](./07-inter-module-communication.md).
 
+Engine = **SQL Server** (`Microsoft.EntityFrameworkCore.SqlServer`). The DbContext is registered
+through Wolverine's EF integration (`AddDbContextWithWolverineIntegration<T>`, so the module's outbox
+is enrolled — see [07](./07-inter-module-communication.md)); the module's own `AddXPersistence(...)`
+registers only its repositories and `IUnitOfWork`. Options binding + interceptors are identical:
+
 ```csharp
-// registration for each module's DbContext
-services.AddDbContext<PqrsDbContext>((sp, options) =>
+// each module's messaging helper (in *.Persistence), called from the host's UseWolverine(...)
+opts.Services.AddDbContextWithWolverineIntegration<PqrsDbContext>((sp, options) =>
 {
-    options.UseNpgsql(config.GetConnectionString("Dominodo"),
-        npg => npg.MigrationsHistoryTable("__ef_migrations", PqrsDbContext.Schema));
+    options.UseSqlServer(config.GetConnectionString("Dominodo"),
+        sql => sql.MigrationsHistoryTable("__ef_migrations", PqrsDbContext.Schema));
     options.AddInterceptors(
         sp.GetRequiredService<AuditableEntityInterceptor>(),
         sp.GetRequiredService<DispatchDomainEventsInterceptor>());
 });
+opts.PersistMessagesWithSqlServer(cs, role: MessageStoreRole.Ancillary).Enroll<PqrsDbContext>();
+
+// in AddPqrsPersistence(IServiceCollection):
 services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PqrsDbContext>());
 services.AddScoped<IPqrRepository, PqrRepository>();
 ```

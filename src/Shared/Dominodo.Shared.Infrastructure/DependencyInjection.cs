@@ -1,0 +1,122 @@
+using Asp.Versioning;
+using Dominodo.Shared.Abstractions;
+using Dominodo.Shared.Infrastructure.Auth;
+using Dominodo.Shared.Infrastructure.Behaviors;
+using Dominodo.Shared.Infrastructure.Http;
+using Dominodo.Shared.Infrastructure.Multitenancy;
+using Dominodo.Shared.Infrastructure.Persistence;
+using Dominodo.Shared.Infrastructure.Time;
+using Dominodo.Shared.Kernel;
+using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using System.Reflection;
+using System.Text;
+
+namespace Dominodo.Shared.Infrastructure;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddSharedInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddHttpContextAccessor();
+
+        services.AddSingleton<IClock, SystemClock>();
+        services.AddScoped<ITenantContext, HttpTenantContext>();
+
+        // Fallback — overridden when the Tenants module registers its own ITenantDirectory
+        services.AddSingleton<ITenantDirectory, NullTenantDirectory>();
+
+        services.AddSingleton<AuditableEntityInterceptor>();
+        services.AddSingleton<DispatchDomainEventsInterceptor>();
+
+        services.AddMediatR(cfg =>
+            cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(UnitOfWorkBehavior<,>));
+
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddProblemDetails();
+
+        services.AddApiVersioning(options =>
+        {
+            options.DefaultApiVersion = new ApiVersion(1);
+            options.AssumeDefaultVersionWhenUnspecified = true;
+            options.ReportApiVersions = true;
+        }).AddApiExplorer(options => options.GroupNameFormat = "'v'VVV");
+
+        services.AddJwtAuthentication(configuration);
+
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddDominodoTelemetry(
+        this IServiceCollection services,
+        string serviceName)
+    {
+        services.AddOpenTelemetry()
+            .ConfigureResource(r => r.AddService(serviceName))
+            .WithTracing(tracing => tracing
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation());
+
+        return services;
+    }
+
+    private static IServiceCollection AddJwtAuthentication(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var jwtOptions = configuration
+            .GetSection(JwtOptions.SectionName)
+            .Get<JwtOptions>()!;
+
+        services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtOptions.Issuer,
+                    ValidAudience = jwtOptions.Audience,
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtOptions.SecretKey)),
+                    ClockSkew = TimeSpan.Zero
+                };
+            });
+
+        services.AddAuthorizationBuilder()
+            .AddPolicy("SuperAdmin", policy => policy.RequireRole("SuperAdmin"));
+
+        return services;
+    }
+
+    public static WebApplication UseSharedInfrastructure(this WebApplication app)
+    {
+        app.UseExceptionHandler();
+
+        app.UseMiddleware<CorrelationIdMiddleware>();
+
+        app.UseAuthentication();
+        app.UseMiddleware<TenantResolutionMiddleware>();
+        app.UseAuthorization();
+
+        return app;
+    }
+}

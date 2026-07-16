@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\Dominodo.Shared.Abstractions\Dominodo.Shared.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="WolverineFx.EntityFrameworkCore" />
+    <PackageReference Include="WolverineFx.SqlServer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dominodo.Admin.Application\Dominodo.Admin.Application.csproj" />
+    <ProjectReference Include="..\Dominodo.Admin.Domain\Dominodo.Admin.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Infrastructure\Dominodo.Shared.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

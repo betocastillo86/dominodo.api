@@ -149,23 +149,31 @@ internal sealed class LoggingBehavior<TRequest, TResponse>(ILogger<TRequest> log
 
 ### UnitOfWorkBehavior
 
-Wraps **command** handlers in a transaction and commits on success, so handlers never call
-`SaveChangesAsync` themselves. This is also where the module's outbox is flushed atomically with the
-business change (see [07](./07-inter-module-communication.md)). Queries are not wrapped.
+Wraps **command** handlers in a transaction so handlers never call `SaveChangesAsync` themselves. It
+commits when the command completes; an **exception** (a true abort) propagates past the behavior, so
+no commit happens. An expected-failure `Result` is a normal outcome — not a rollback signal — so it
+**still commits** any state the handler deliberately recorded (e.g. a failed OTP attempt that must be
+counted). The convention is: handlers **guard-first, mutate-last, and throw to abort**. Committing is
+also where each module's domain events are dispatched and its outbox is flushed
+(see [07](./07-inter-module-communication.md)). Queries are not wrapped.
+
+Because each module owns its own `DbContext`/`IUnitOfWork`, the behavior resolves **all** registered
+units of work and saves each. A command only mutates its own module's context; the others have no
+tracked changes, so their `SaveChanges` is a no-op — modules never share a transaction.
 
 ```csharp
-internal sealed class UnitOfWorkBehavior<TRequest, TResponse>(IUnitOfWork unitOfWork)
+internal sealed class UnitOfWorkBehavior<TRequest, TResponse>(IEnumerable<IUnitOfWork> unitsOfWork)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
     where TResponse : Result
 {
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
     {
-        if (request is not ICommand and not ICommand<object>) // commands only
+        if (request is not IBaseCommand) // commands only (marker shared by ICommand and ICommand<T>)
             return await next();
 
-        var response = await next();
-        if (response.IsSuccess)
+        var response = await next();              // throws → propagates, no commit (rollback)
+        foreach (var unitOfWork in unitsOfWork)   // each module's DbContext; unchanged ones no-op
             await unitOfWork.SaveChangesAsync(ct); // dispatches domain events + flushes outbox
         return response;
     }

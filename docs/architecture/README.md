@@ -44,7 +44,7 @@ dominodo.api/
 │   │   ├── Dominodo.Shared.Abstractions    # shared ports: IEmailSender, IWhatsAppSender,
 │   │   │                                   #   IFileStorage, IPushSender, IClock
 │   │   └── Dominodo.Shared.Infrastructure  # shared plumbing: base DbContext, EF interceptors,
-│   │                                       #   MediatR behaviors, MassTransit + outbox wiring,
+│   │                                       #   MediatR behaviors, Wolverine + outbox wiring,
 │   │                                       #   tenancy, ProblemDetails/error mapping
 │   ├── Adapters/                    # reusable outbound adapters, one project per external dependency
 │   │   ├── Dominodo.Adapters.Email
@@ -79,7 +79,7 @@ dominodo.api/
 | Project              | May reference                                                        |
 | -------------------- | ------------------------------------------------------------------- |
 | `*.Domain`           | `Shared.Kernel` only                                                |
-| `*.Application`      | own `Domain`, `Shared.Kernel`, `Shared.Abstractions`, other modules' `*.Contracts` |
+| `*.Application`      | own `Domain`, `Shared.Kernel`, `Shared.Abstractions`, `Shared.Infrastructure` (HTTP helpers for its controllers), other modules' `*.Contracts` |
 | `*.Contracts`        | `Shared.Kernel` (kept as thin as possible)                          |
 | `*.Persistence`      | own `Application`, own `Domain`, `Shared.Infrastructure`            |
 | `Adapters.*`         | `Shared.Abstractions`, `Shared.Kernel`                              |

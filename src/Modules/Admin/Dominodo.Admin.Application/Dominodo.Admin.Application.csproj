@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dominodo.Admin.Domain\Dominodo.Admin.Domain.csproj" />
+    <ProjectReference Include="..\Dominodo.Admin.Contracts\Dominodo.Admin.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Abstractions\Dominodo.Shared.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Infrastructure\Dominodo.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Users\Dominodo.Users.Contracts\Dominodo.Users.Contracts.csproj" />
+  </ItemGroup>
+
+
+</Project>

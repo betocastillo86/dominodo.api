@@ -40,6 +40,24 @@
 7. **Ejemplar canónico (primer módulo escrito a mano): `Users`** — con usuarios ya se pueden crear
    tenants después.
 
+## Estado de implementación (MVP slice, 2026-07-16)
+
+Implementado y verificado en el host (`Users` + `Admin`); el resto del modelo sigue siendo diseño.
+
+- **`Users`:** registro (`§1.1`), verificación de teléfono por **OTP** (`§1.7`), **login** password-only
+  con **JWT access + refresh** (rotación + revocación), y **gestión de roles** (listar/crear/actualizar)
+  con permisos read-only (`§1.2`–`§1.4`). `PlatformRoleAssignment` (`§1.5`) sembrado para el SuperAdmin
+  bootstrap. **Pendiente:** `Membership` (`§1.6`) y los tokens *tenant-scoped*.
+- **`Admin`:** slice mínimo de notificaciones — consume el evento OTP de `Users` y entrega por WhatsApp
+  (fallback email). El resto de `§4` es diseño.
+- **Modelo de token (hoy):** el access token lleva `sub = userId` + un claim `role` **por cada rol de
+  ámbito `Platform`** del usuario, resuelto desde sus filas `PlatformRoleAssignment` (`§1.5`) — el
+  `role=SuperAdmin` del bootstrap sale de dato, no de código. El claim `tenant_id` y los tokens
+  *tenant-scoped* (decisión §6) llegan con `Membership`.
+- **Fachada:** `IUsersModuleApi` expone hoy `GetUserById`, `GetUserByPhone` y `GetPlatformPermissions`.
+  `GetMemberships`/`GetEffectivePermissions` (`§1.8`) se difieren con `Membership`.
+- Motor de datos = **SQL Server** (un schema por módulo). Bus = **Wolverine** (ver `docs/adr/`).
+
 ## Mapa de módulos
 
 | Módulo | Responsabilidad | Schema |

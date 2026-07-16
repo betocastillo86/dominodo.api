@@ -108,8 +108,8 @@ Because the seams already exist, extraction is mechanical:
 1. **Reads.** Replace the in-process `IPqrsModuleApi` implementation with an HTTP/gRPC client that
    implements the same interface. Consumers are unchanged — they still depend on the interface from
    `Contracts`.
-2. **Writes.** The module already publishes integration events over MassTransit; switch the transport
-   from in-memory to a real broker (config only). Consumers keep subscribing to the same event types.
+2. **Writes.** The module already publishes integration events over Wolverine; switch the transport
+   from durable local queues to a real broker (config only). Handlers keep subscribing to the same event types.
 3. **Data.** The module already owns its schema with no cross-module foreign keys, so its tables move
    to a dedicated database as-is.
 4. **Host.** Give the module its own host project that references its four projects and wires the

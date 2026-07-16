@@ -33,7 +33,7 @@ Modules/<Module>/
 | Project                 | May reference                                                                      |
 | ----------------------- | ---------------------------------------------------------------------------------- |
 | `*.Domain`              | `Shared.Kernel` only                                                               |
-| `*.Application`         | own `Domain`, `Shared.Kernel`, `Shared.Abstractions`, other modules' `*.Contracts` |
+| `*.Application`         | own `Domain`, `Shared.Kernel`, `Shared.Abstractions`, `Shared.Infrastructure`, other modules' `*.Contracts` |
 | `*.Contracts`           | `Shared.Kernel` (keep thin)                                                        |
 | `*.Persistence`         | own `Application`, own `Domain`, `Shared.Infrastructure`                           |
 | `Adapters.*`            | `Shared.Abstractions`, `Shared.Kernel`                                             |
@@ -41,6 +41,12 @@ Modules/<Module>/
 | `Dominodo.Api` (host)   | everything (composition root only — the ONLY project referencing `Adapters.*` and `*.Persistence`) |
 
 Also: MediatR requests/handlers are `internal` — a module cannot dispatch another module's requests.
+
+**Controllers live in the module's `Application` project** (registered with the host via
+`AddApplicationPart`), because only that assembly can dispatch the module's `internal` MediatR
+commands via `ISender`. That is why `*.Application` references `Shared.Infrastructure` — for the
+HTTP helpers its controllers use (`ErrorResults.ToProblem`) — and takes a `FrameworkReference` to
+`Microsoft.AspNetCore.App`. It still must **never** reference any `*.Persistence`.
 
 ## Architecture reference — read the doc BEFORE working in that area
 
@@ -74,6 +80,14 @@ The full index and solution map is in `docs/architecture/README.md`.
 - **Tests are opt-in.** Never generate tests as a side effect of a feature, prompt, or refactor. Write
   unit/integration/E2E tests **only when explicitly asked**, and only for the cases named. Architecture
   tests (`Dominodo.ArchitectureTests`) are the sole exception — always maintained. See `docs/architecture/10-testing.md`.
+
+## Code style
+
+- **Braces are mandatory on every control block** — `if`, `else`, `for`, `foreach`, `while`, `do`,
+  `using`, `lock`, `fixed` — even when the body is a single line. No braceless one-liners. Enforced by
+  `.editorconfig` (`csharp_prefer_braces = true` / `IDE0011`) with `EnforceCodeStyleInBuild` +
+  `TreatWarningsAsErrors`, so a violation **breaks the build**. Run `dotnet format analyzers --diagnostics IDE0011`
+  to fix mechanically.
 
 ## Naming conventions
 

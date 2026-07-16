@@ -23,3 +23,7 @@ historia y el razonamiento quedan aquí sin inflar el contexto del agente.
 | [0003](./0003-catalogo-global-de-roles-y-permisos.md) | Catálogo global de roles y permisos | Accepted |
 | [0004](./0004-modulo-admin-agrupa-notificaciones-y-config.md) | Módulo `Admin` agrupa notificaciones y configuración | Accepted |
 | [0005](./0005-modulo-operations-unificado.md) | Módulo `Operations` unifica PQRS, paquetería y visitas | Accepted |
+| [0006](./0006-stack-mvp-sqlserver-jwt-login-password.md) | Stack del MVP: SQL Server, JWT access+refresh, login password-only | Accepted |
+| [0007](./0007-otp-a-traves-del-modulo-admin.md) | OTP entregado a través del módulo `Admin` (WhatsApp con fallback email) | Accepted |
+| [0008](./0008-rbac-scope-y-autoridad-de-plataforma-por-dato.md) | RBAC: `Role.Scope` y autoridad de plataforma por dato (`PlatformRoleAssignment`) | Accepted |
+| [0009](./0009-bus-de-mensajeria-wolverine.md) | Bus de mensajería: Wolverine (reemplaza a MassTransit) | Accepted |

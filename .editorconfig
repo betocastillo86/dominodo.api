@@ -1,0 +1,13 @@
+root = true
+
+[*.cs]
+# --- Estilo de bloques ---
+# REGLA: todo bloque de control (if/else/for/foreach/while/do/using/lock/fixed)
+# DEBE ir entre llaves, incluso si el cuerpo es de una sola línea.
+# Se eleva a warning y, con TreatWarningsAsErrors, rompe el build si se incumple.
+csharp_prefer_braces = true:warning
+dotnet_diagnostic.IDE0011.severity = warning
+
+# Indentación
+indent_style = space
+indent_size = 4

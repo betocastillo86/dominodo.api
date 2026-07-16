@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Asp.Versioning.Http" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="WolverineFx.RuntimeCompilation" />
+    <PackageReference Include="AspNetCore.HealthChecks.SqlServer" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\Shared\Dominodo.Shared.Abstractions\Dominodo.Shared.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Shared\Dominodo.Shared.Infrastructure\Dominodo.Shared.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="Modules">
+    <ProjectReference Include="..\..\Modules\Users\Dominodo.Users.Application\Dominodo.Users.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\Users\Dominodo.Users.Persistence\Dominodo.Users.Persistence.csproj" />
+    <ProjectReference Include="..\..\Modules\Admin\Dominodo.Admin.Application\Dominodo.Admin.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\Admin\Dominodo.Admin.Persistence\Dominodo.Admin.Persistence.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="Adapters">
+    <ProjectReference Include="..\..\Adapters\Dominodo.Adapters.Email\Dominodo.Adapters.Email.csproj" />
+    <ProjectReference Include="..\..\Adapters\Dominodo.Adapters.WhatsApp\Dominodo.Adapters.WhatsApp.csproj" />
+  </ItemGroup>
+
+</Project>

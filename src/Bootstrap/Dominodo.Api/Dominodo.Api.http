@@ -1,0 +1,6 @@
+@Dominodo.Api_HostAddress = http://localhost:5083
+
+GET {{Dominodo.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
