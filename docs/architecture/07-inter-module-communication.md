@@ -1,5 +1,10 @@
 # 07 — Inter-Module Communication
 
+> **Bus: Wolverine** (MIT). Replaced MassTransit, which went commercial at v9 (paid license to boot)
+> and whose EF outbox didn't work in-process. Wolverine's durable outbox works in-process today and
+> its v5 modular-monolith support fits our one-DbContext/one-schema-per-module model. MediatR stays
+> for in-module dispatch and domain events.
+
 ## What it is
 
 Modules collaborate through exactly two channels, chosen by intent:
@@ -9,127 +14,133 @@ Modules collaborate through exactly two channels, chosen by intent:
 | "Something happened; whoever cares can react." | **Integration event** over the message bus | async | temporal decoupling |
 | "I need a fact from you right now." | **`IModuleApi` facade** call | sync, in-process | call-time |
 
-There is a third concept that is **not** cross-module: **domain events**, which are dispatched
-in-process *within a single module* and never leave it.
+A third concept is **not** cross-module: **domain events**, dispatched in-process *within a single
+module*, never leaving it.
 
 ## Why the three-way split
 
-- **Domain events** keep a module's own internals decoupled (an aggregate announces a fact; local
-  handlers react) but they run in the same transaction and the same database — so they cannot be the
-  mechanism for reaching a module that owns a different schema.
-- **Integration events** are the correct mechanism when another module (another schema, another
-  future service) must react. Publisher and subscriber commit **separate** transactions to their
-  **separate** schemas — this is eventual consistency, exactly the semantics we would have between
-  microservices.
-- **The facade** covers the case where a handler needs a fact immediately (does this apartment
-  exist?). A synchronous in-process call is simplest and, because it goes through an interface in
-  `Contracts`, it becomes a network client for free when the module is extracted.
+- **Domain events** decouple a module's internals (an aggregate announces a fact; local handlers
+  react) but run in the same transaction/database — so they cannot reach a module with another schema.
+- **Integration events** are the mechanism when another module (another schema, another future
+  service) must react. Publisher and subscriber commit **separate** transactions to **separate**
+  schemas — eventual consistency, exactly the microservice semantics.
+- **The facade** covers a handler needing a fact *now* (does this apartment exist?). A synchronous
+  in-process call through a `Contracts` interface becomes a network client for free on extraction.
 
 ## Domain events (intra-module)
 
-Raised by an aggregate, dispatched after `SaveChangesAsync` by the
-`DispatchDomainEventsInterceptor`, handled by in-process MediatR `INotificationHandler`s inside the
-same module and the same transaction.
+Raised by an aggregate, dispatched after `SaveChangesAsync` by the `DispatchDomainEventsInterceptor`,
+handled by in-process MediatR `INotificationHandler`s in the same module and transaction. A common
+pattern: a domain-event handler **translates** an internal fact into a published integration event.
 
 ```csharp
 // raised inside the aggregate (Dominodo.Pqrs.Domain)
 Raise(new PqrClosedDomainEvent(Id, ClosedAtUtc.Value));
 
-// handled inside the same module (Dominodo.Pqrs.Application)
-internal sealed class WhenPqrClosed_PublishIntegrationEvent(IPublishEndpoint bus)
+// handled inside the same module (Dominodo.Pqrs.Application) — translates to an integration event
+internal sealed class WhenPqrClosed_PublishIntegrationEvent(IMessageBus bus)
     : INotificationHandler<PqrClosedDomainEvent>
 {
     public Task Handle(PqrClosedDomainEvent e, CancellationToken ct) =>
-        bus.Publish(new PqrClosedIntegrationEvent(e.PqrId, e.ClosedAtUtc), ct);
+        bus.PublishAsync(new PqrClosedIntegrationEvent(e.PqrId, e.ClosedAtUtc)).AsTask();
 }
 ```
 
-A very common pattern (above): a domain event handler is what **translates** an internal fact into a
-published integration event.
+The publish enrolls in the outbox because it runs inside the command's transaction on the module's
+Wolverine-enrolled `DbContext`.
 
 ## Integration events (cross-module) — the reliable flow
 
-The challenge: module A commits to schema `a`, module B must react and commit to schema `b`. We must
-never lose the event if A commits and then crashes, and we must never publish an event for a change
-that rolled back. The **transactional outbox** solves both.
+Module A commits to schema `a`; module B must react and commit to schema `b`. Never lose an event if A
+commits then crashes; never publish for a change that rolled back. The **transactional outbox** solves
+both.
 
 ```
-Module A  (transaction on schema `a`)              Module B (transaction on schema `b`)
-─────────────────────────────────────             ─────────────────────────────────────
+Module A (tx on schema `a`)                    Module B (tx on schema `b`)
 1. Handler mutates its aggregate
-2. Domain event → in-process handler
-   builds the integration event
-3. bus.Publish(...) writes the event to
-   A's OUTBOX table  ── SAME transaction ──▶  commit: business change + outbox row are atomic
-                                                     │
-4. MassTransit delivery service reads A's           │  (in-memory bus now; a real broker later —
-   outbox and hands the message to the bus  ────────┘   config only, no code change)
-                                                     ▼
-                                            5. B's consumer receives the message
-                                            6. B does its work in ITS OWN transaction, commits
-                                               (on failure → MassTransit retries; use an inbox /
-                                                idempotent handler to dedupe — see below)
+2. Domain event → handler builds the integration event
+3. PublishAsync → OUTBOX  ── SAME tx ──▶  commit: business change + outbox row are atomic
+4. Wolverine durability agent reads the outbox,
+   delivers via durable local queue (broker later = config)  ──▶  5. B's handler receives it
+                                                                  6. B commits in ITS OWN tx
+                                                                     (retry on failure; inbox +
+                                                                      natural key = idempotent)
 ```
 
-Key properties:
+- **Atomic publish** — outbox row written in A's business transaction; publish can't diverge from state.
+- **At-least-once** — Wolverine retries, so handlers must be **idempotent** (inbox dedupe + natural key).
 
-- **A and B never share a transaction.** Correct — they do not share a database. Consistency between
-  them is *eventual*.
-- **Atomic publish.** The outbox row is written in the same transaction as A's business change, so
-  publishing can't diverge from the state change.
-- **At-least-once delivery.** MassTransit retries failed consumers, so B's consumer must be
-  **idempotent** (safe to process the same event twice).
+## Setup
 
-### Setup
-
-MassTransit provides both the bus abstraction and an **EF Core transactional outbox**, configured
-**per module `DbContext`**. The in-memory transport is used today; switching to RabbitMQ / Azure
-Service Bus later is a configuration change.
+One EF-integrated `DbContext` + one ancillary message store per module (each keeps its own schema).
+Durable **local queues** are the in-process transport today; swapping to RabbitMQ / Azure Service Bus
+is config only.
 
 ```csharp
-// registered by the host, once
-services.AddMassTransit(x =>
+// Program.cs — registered once by the host
+builder.Host.UseWolverine((context, opts) =>
 {
-    // discover consumers from each module's Application assembly
-    x.AddConsumers(typeof(Pqrs.Application.DependencyInjection).Assembly);
-    x.AddConsumers(typeof(Notifications.Application.DependencyInjection).Assembly);
+    var cs = context.Configuration.GetConnectionString("Default")!;
 
-    // per-module outbox on that module's DbContext
-    x.AddEntityFrameworkOutbox<PqrsDbContext>(o => { o.UsePostgres(); o.UseBusOutbox(); });
-    x.AddEntityFrameworkOutbox<NotificationsDbContext>(o => { o.UsePostgres(); o.UseBusOutbox(); });
+    opts.MultipleHandlerBehavior = MultipleHandlerBehavior.Separated;   // each module: own tx + retry
+    opts.Durability.MessageIdentity = MessageIdentity.IdAndDestination; // same event, many modules
+    opts.Durability.MessageStorageSchemaName = "wolverine";            // bus storage, separate schema
 
-    x.UsingInMemory((context, cfg) => cfg.ConfigureEndpoints(context)); // ← swap transport later
+    // one enrolled DbContext + ancillary message store per module
+    opts.Services.AddDbContextWithWolverineIntegration<UsersDbContext>(x => x.UseSqlServer(cs));
+    opts.PersistMessagesWithSqlServer(cs, role: MessageStoreRole.Ancillary).Enroll<UsersDbContext>();
+    opts.Services.AddDbContextWithWolverineIntegration<AdminDbContext>(x => x.UseSqlServer(cs));
+    opts.PersistMessagesWithSqlServer(cs, role: MessageStoreRole.Ancillary).Enroll<AdminDbContext>();
+
+    // discover each module's handlers (they are `internal`)
+    opts.Discovery.IncludeAssembly(typeof(Users.Application.DependencyInjection).Assembly);
+    opts.Discovery.IncludeAssembly(typeof(Admin.Application.DependencyInjection).Assembly);
+    opts.Discovery.CustomizeHandlerDiscovery(x => x.Includes.IsNotPublic());
+
+    opts.Policies.UseDurableLocalQueues(); // swap to opts.UseRabbitMq(...) later — handlers unchanged
 });
 ```
 
-### Contracts
+Notes:
+- **Internal handlers** need `CustomizeHandlerDiscovery(x => x.Includes.IsNotPublic())` (Wolverine
+  discovers public types by default). Verify the exact signature against the Wolverine 5 version.
+- **One `DbContext` per handler** under the EF middleware — matches our rule (a handler touches only
+  its own module's `DbContext`).
+- No MassTransit `OnModelCreating` calls (`AddInboxStateEntity`/`AddOutboxMessageEntity`/…); storage is
+  set up by `AddDbContextWithWolverineIntegration<T>()` (or `modelBuilder.MapWolverineEnvelopeStorage()`).
 
-Integration events are declared in the publishing module's `Contracts` project — the only place other
-modules look. Keep them flat, versioned by addition, and free of domain types.
+## Contracts
+
+Integration events live in the publishing module's `Contracts` — the only place others look. Flat,
+versioned by addition, free of domain types.
 
 ```csharp
 // Dominodo.Pqrs.Contracts/IntegrationEvents/PqrClosedIntegrationEvent.cs
 public sealed record PqrClosedIntegrationEvent(Guid PqrId, DateTimeOffset ClosedAtUtc);
 ```
 
-### Consuming in another module
+## Consuming in another module
 
-A consumer is an inbound adapter: it translates the event into a command dispatched through the
-consuming module's own MediatR. It must be idempotent.
+A handler is an inbound adapter that translates the event into a command on the consuming module's own
+MediatR. No `IConsumer<T>` — Wolverine binds by convention (a `Handle`/`Consume` method whose first
+parameter is the message; dependencies injected as parameters). Keep it `internal` and idempotent.
 
 ```csharp
-// Dominodo.Notifications.Application/Consumers/PqrClosedConsumer.cs
-internal sealed class PqrClosedConsumer(ISender sender) : IConsumer<PqrClosedIntegrationEvent>
+// Dominodo.Notifications.Application/Consumers/PqrClosedHandler.cs
+internal static class PqrClosedHandler
 {
-    public Task Consume(ConsumeContext<PqrClosedIntegrationEvent> ctx) =>
-        sender.Send(new NotifyResidentPqrClosedCommand(ctx.Message.PqrId)); // idempotent handler
+    public static Task Handle(PqrClosedIntegrationEvent message, ISender sender, CancellationToken ct) =>
+        sender.Send(new NotifyResidentPqrClosedCommand(message.PqrId), ct); // idempotent command
 }
 ```
 
+When a command handler owns the `DbContext` and wants an explicit atomic publish, use
+`IDbContextOutbox<TDbContext>`: mutate, `PublishAsync(...)`, then `SaveChangesAndFlushMessagesAsync()`.
+
 ## Synchronous reads — the module facade
 
-When a handler needs a fact from another module *now*, it calls that module's facade. The facade is a
-plain .NET interface in `Contracts`; MediatR stays private to each module.
+When a handler needs a fact from another module *now*, it calls that module's facade — a plain .NET
+interface in `Contracts`; MediatR stays private to each module.
 
 ```csharp
 // Dominodo.Tenants.Contracts/ITenantsModuleApi.cs  (PUBLIC)
@@ -138,44 +149,34 @@ public interface ITenantsModuleApi
     Task<ApartmentDto?> GetApartmentAsync(Guid id, CancellationToken ct);
 }
 public sealed record ApartmentDto(Guid Id, string Number, Guid TenantId);
-```
 
-```csharp
-// Dominodo.Tenants.Application/TenantsModuleApi.cs  (INTERNAL implementation)
+// Dominodo.Tenants.Application/TenantsModuleApi.cs  (INTERNAL impl — uses this module's own MediatR)
 internal sealed class TenantsModuleApi(ISender sender) : ITenantsModuleApi
 {
     public async Task<ApartmentDto?> GetApartmentAsync(Guid id, CancellationToken ct)
     {
-        // uses THIS module's own MediatR; the query type is internal to Tenants
         var result = await sender.Send(new GetApartmentByIdQuery(id), ct);
         return result.IsSuccess ? result.Value : null;
     }
 }
 ```
 
-The consumer just injects the interface (shown in [03 — CQRS](./03-cqrs-mediatr.md)):
-
-```csharp
-internal sealed class OpenPqrCommandHandler(ITenantsModuleApi tenants, /* ... */) { /* ... */ }
-```
-
-**Why not dispatch the other module's query directly?** Because that query type is `internal` to its
-module — another module cannot even name it, let alone reference its `Application` assembly. The
-facade is the only door, and it is exactly the door that becomes a remote client later.
+The other module's query is `internal` — it can't be named from outside. The facade is the only door,
+and it is the door that becomes a remote client later.
 
 ## Extraction later — the seam in action
 
 - **Reads:** provide `TenantsHttpClient : ITenantsModuleApi` in the new service's client library;
-  register it instead of `TenantsModuleApi`. Callers are unchanged.
-- **Writes:** flip the MassTransit transport from in-memory to a broker; the same event types route
-  over the network. Consumers are unchanged.
+  register it instead of `TenantsModuleApi`. Callers unchanged.
+- **Writes:** switch the Wolverine transport from durable local queues to a broker
+  (`opts.UseRabbitMq(...)`); event types and handlers unchanged.
 
 ## Do / Don't
 
-- **Do** use integration events when another module must react to a change.
-- **Do** publish integration events through the outbox (`bus.Publish` inside the command's
-  transaction), never as a fire-and-forget after commit.
-- **Do** make every consumer idempotent (dedupe by event id / natural key).
+- **Do** use integration events when another module must react.
+- **Do** publish through the outbox (domain-event → `IMessageBus.PublishAsync` in the command's
+  transaction, or `IDbContextOutbox<T>` + `SaveChangesAndFlushMessagesAsync()`) — never fire-and-forget.
+- **Do** make every handler idempotent (inbox + natural key).
 - **Do** use the facade for synchronous cross-module reads.
 - **Don't** use a domain event to reach another module.
 - **Don't** call another module's `DbContext`, repository, or handler directly.
