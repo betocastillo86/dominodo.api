@@ -37,12 +37,18 @@ Index `TenantId` on every tenant-owned table (see [06 — Persistence](./06-pers
 
 ## Resolving the tenant
 
+> **Pending Fase 4 (Membership) — see [doc 12](./12-permission-authorization.md).** The `tenant_id`-claim
+> reconciliation described in this section assumed **one tenant per token** and was never emitted; it is
+> inert in code today. It will be replaced by a **Membership** check (a user may act on a tenant iff they
+> have a Membership in it), decided by a **permission — never a role**. The slug→`TenantId` resolution below
+> stands; the claim-matching rows are the pre-Fase-4 design.
+
 ```
-X-Tenant: los-almendros          Authorization: Bearer <jwt tenant_id claim> (optional)
+X-Tenant: los-almendros          Authorization: Bearer <jwt> (tenant-agnostic)
         │
 UseAuthentication  →  UseTenantResolution  →  UseAuthorization
                           │
-                          slug ──(cached lookup)──▶ TenantId, then reconcile vs. JWT
+                          slug ──(cached lookup)──▶ TenantId
 ```
 
 - The **slug** decides the tenant; the middleware resolves it once and `ITenantContext.TenantId`
@@ -86,25 +92,23 @@ internal sealed class TenantDirectory(...) : ITenantDirectory { /* cache + regis
 `HttpTenantContext` reads it synchronously and stays free of any module dependency.
 
 ```csharp
-// Shared.Kernel
+// Shared.Kernel — no IsSuperAdmin: cross-tenant authority is a permission, not a role (see doc 12).
 public interface ITenantContext
 {
     Guid TenantId { get; }   // throws if no tenant resolved this request
     bool HasTenant { get; }
-    bool IsSuperAdmin { get; }
 }
 ```
 
 ## The resolution middleware
 
-Runs **after** authentication, **before** authorization. It resolves the slug and enforces the one
-invariant that makes a client-supplied header safe: *an authenticated caller only acts on their own tenant.*
+Runs **after** authentication, **before** authorization. It resolves the slug and stashes the
+`TenantId`. It does **not** authorize — it authenticates the tenant, nothing more.
 
 ```csharp
 public async Task Invoke(HttpContext ctx, ITenantDirectory directory)   // directory injected per-request
 {
     var slug = ctx.Request.Headers["X-Tenant"].ToString();
-    var isTenantUser = (ctx.User.Identity?.IsAuthenticated ?? false) && !ctx.User.IsInRole("SuperAdmin");
 
     if (!string.IsNullOrWhiteSpace(slug))
     {
@@ -112,33 +116,27 @@ public async Task Invoke(HttpContext ctx, ITenantDirectory directory)   // direc
         if (tenantId is null) return Reject(ctx, 400, "Tenant.Unknown");
 
         ctx.Items["TenantId"] = tenantId.Value;
-
-        // super-admins exempt; a tenant-bound token must agree with the resolved tenant
-        if (isTenantUser && Guid.TryParse(ctx.User.FindFirstValue("tenant_id"), out var claim)
-            && claim != tenantId.Value)
-            return Reject(ctx, 403, "Tenant.Mismatch");
-    }
-    else if (isTenantUser && ctx.User.FindFirstValue("tenant_id") is not null)
-    {
-        return Reject(ctx, 403, "Tenant.Mismatch");   // tenant user with no site header
     }
 
+    // TODO (Fase 4 — Membership, doc 12): enforce that an authenticated caller may act on the
+    // resolved tenant only if they have a Membership in it. Decided by a permission, never a role
+    // name — no IsInRole here. Replaces the old (inert) tenant_id-claim reconciliation.
     await next(ctx);
 }
 ```
 
 ```csharp
 app.UseAuthentication();
-app.UseTenantResolution();   // ← slug → id, then reconcile vs. JWT
+app.UseTenantResolution();   // ← slug → TenantId (authorization happens later, by permission)
 app.UseAuthorization();
 ```
 
 ## Endpoints — declare the tenant expectation explicitly
 
 ```csharp
-[Authorize]                     // tenant-scoped: slug required + validated against JWT
-[AllowAnonymous]                // public form: slug required, no JWT to validate
-[Authorize(Policy = "SuperAdmin")]  // cross-tenant: slug optional, plus a runtime IsSuperAdmin check
+[HasPermission(Permissions.RequestsManage)]  // tenant-scoped: slug required; permission gates access
+[AllowAnonymous]                              // public form: slug required, no permission to check
+[HasPermission(Permissions.TenantsManage)]   // cross-tenant: slug optional; branch on HasTenant in the handler
 ```
 
 ## The single scoping mechanism
@@ -157,29 +155,30 @@ public interface ITenantOwned { Guid TenantId { get; } }
 var pqrs = await db.Pqrs.ForCurrentTenant(tenant).Where(p => p.Status == PqrStatus.Open).ToListAsync(ct);
 ```
 
-Cross-tenant read (super-admin) — do not scope, guard with authorization:
+Cross-tenant read — the endpoint is gated by a platform-scoped permission (`[HasPermission(...)]`, doc
+12); the handler branches on `HasTenant` and, when no tenant is scoped, does not filter by `TenantId`:
 
 ```csharp
-if (!tenant.IsSuperAdmin)
-    return Error.Forbidden("Pqr.CrossTenantForbidden", "Only super-admins may read across tenants.");
-var stats = await db.Pqrs.GroupBy(p => p.TenantId) /* ... */ .ToListAsync(ct);
+if (tenant.HasTenant)
+    return await db.Pqrs.ForCurrentTenant(tenant) /* ... */ .ToListAsync(ct);
+var stats = await db.Pqrs.GroupBy(p => p.TenantId) /* ... */ .ToListAsync(ct);   // all tenants
 ```
 
 ## Guardrails
 
-- **Middleware:** unknown slug → `400`; resolved tenant ≠ JWT (or missing) for a tenant user → `403`.
-- **Endpoints:** every endpoint is explicitly `[Authorize]`, `[AllowAnonymous]`, or `SuperAdmin`-guarded.
-  A tenant-scoped handler reaching `TenantId` with no resolved slug throws — never a silent all-tenant read.
+- **Middleware:** unknown slug → `400`. It resolves and stashes the tenant; it does not authorize.
+- **Endpoints:** every endpoint is explicitly `[HasPermission(...)]` or `[AllowAnonymous]`. A
+  tenant-scoped handler reaching `TenantId` with no resolved slug throws — never a silent all-tenant read.
 - **Analyzer/architecture test:** flags raw `.Where(x => x.TenantId == ...)` outside `ForCurrentTenant`
   (see [10 — Testing](./10-testing.md)).
 
 ## Do / Don't
 
 - **Do** send the site **slug** in `X-Tenant`; resolve it via `ITenantDirectory` (Tenants-owned, cached).
-- **Do** validate the resolved tenant against the JWT's `tenant_id` (reject on mismatch).
+- **Do** authorize by permission (`[HasPermission(...)]`, doc 12); gate tenant access by Membership (Fase 4).
 - **Do** scope reads with `ForCurrentTenant`; set `TenantId` from `ITenantContext` on create.
-- **Do** guard cross-tenant reads with an `IsSuperAdmin` check.
-- **Don't** resolve the tenant from the JWT claim — the claim only *validates* the slug.
+- **Do** gate cross-tenant reads with a platform permission, then branch on `HasTenant` in the handler.
+- **Don't** resolve the tenant from a JWT claim — the slug identifies the tenant; permissions authorize.
 - **Don't** reference the Tenants module's `Contracts` from `Shared.Infrastructure` — use the port.
 - **Don't** trust the slug for authority, or expose non-public data through `[AllowAnonymous]`.
-- **Don't** hand-roll `.Where(x => x.TenantId == ...)`, or rely on a global query filter.
+- **Don't** authorize on a role name (`IsInRole`/`RequireRole`/`IsSuperAdmin`), or hand-roll `.Where(x => x.TenantId == ...)`.

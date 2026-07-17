@@ -39,7 +39,7 @@ GetEffectivePermissionsAsync(userId, tenantId?):
     perms  = permissions of the user's Platform-scope roles      # ALWAYS — no tenant needed
     if tenantId is present:
         perms ∪= permissions of the user's role in that tenant   # Membership (deferred)
-    return perms                                                 # SuperAdmin short-circuits to "all"
+    return perms                                                 # SuperAdmin's seeded role already holds all
 ```
 
 This is the whole point-1 requirement made concrete:
@@ -129,11 +129,14 @@ publishes an integration event when a role's permissions or a Membership change
 (`RolePermissionsChangedIntegrationEvent`, `MembershipChangedIntegrationEvent`); an in-host handler
 evicts the affected cache keys, giving immediate freshness with zero per-request DB cost.
 
-## SuperAdmin
+## SuperAdmin — no role is ever hardcoded
 
-`SuperAdmin` is platform authority, not a permission. The handler short-circuits to success when the
-caller is in the `SuperAdmin` role — so cross-tenant admin endpoints stay reachable without enumerating
-every permission. This mirrors the existing `IsSuperAdmin` exemption in tenant resolution.
+Authorization is **always** by permission. There is **no role short-circuit** anywhere in the pipeline
+— not in the handler, the tenant middleware, or `ITenantContext`. `SuperAdmin` is just a seeded role
+that happens to carry **every** permission, so it resolves to a superset that satisfies any
+`[HasPermission(...)]`. Grant or revoke its power by changing its permissions in the seed — never by
+special-casing its name in code. Renaming or deleting the role changes only which permissions resolve;
+it can never silently bypass a check, because no check reads a role name.
 
 ## Relationship to multitenancy (revises doc 09)
 
@@ -143,8 +146,9 @@ belongs to *many* tenants). The revised rule:
 
 - The token carries **no** `tenant_id`. It is tenant-agnostic.
 - An authenticated caller is allowed to act on the resolved `X-Tenant` **iff they have a Membership in
-  it** (or are `SuperAdmin`). That membership check replaces the old `tenant_id`-claim reconciliation
-  and is the same lookup that feeds permission resolution.
+  it**, or hold a **platform-scoped permission** granting cross-tenant access. That check replaces the
+  old `tenant_id`-claim reconciliation and is the same lookup that feeds permission resolution — never
+  a role name. Cross-tenant reads are likewise gated by a permission plus `HasTenant`, not `IsSuperAdmin`.
 
 ## Permission catalog & naming
 
@@ -160,7 +164,7 @@ belongs to *many* tenants). The revised rule:
 - **Do** treat platform permissions as tenant-independent; require a tenant only for tenant-scoped ones.
 - **Do** reference `Permissions.*` constants — never a raw `"roles.manage"` string.
 - **Don't** put permissions (or a single `tenant_id`) in the JWT.
-- **Don't** authorize on a role name (`RequireRole`) except for the `SuperAdmin` platform bypass.
+- **Don't** authorize on a role name — no `RequireRole`, no `IsInRole`, no `SuperAdmin` special-case. Ever.
 - **Don't** reference `Users.Contracts` from `Shared.Infrastructure` — depend on the `IPermissionProvider` port.
 - **Don't** validate tenant access via a JWT claim — validate Membership (see the section above).
 

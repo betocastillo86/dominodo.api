@@ -98,7 +98,7 @@ public static class DependencyInjection
             });
 
         // Core authorization services. Endpoints authorize by permission (doc 12), not by named
-        // policy, so no policies are registered here. SuperAdmin is a runtime bypass in the handler.
+        // policy or role, so no policies are registered here.
         services.AddAuthorization();
 
         // Permission-based authorization: [HasPermission(code)] → "perm:<code>" policy, built on the

@@ -6,8 +6,10 @@ using System.Security.Claims;
 namespace Dominodo.Shared.Infrastructure.Auth;
 
 // Resolves the caller's effective permissions for the current tenant and checks the requirement.
-// SuperAdmin is platform authority (bypass); everything else fails closed. Runs after tenant
-// resolution, so ITenantContext is populated when a tenant permission is evaluated.
+// Authorization is ALWAYS by permission — no role is hardcoded here. The SuperAdmin role simply
+// carries every permission via the seed, so it resolves to a superset that satisfies any check.
+// Fails closed. Runs after tenant resolution, so ITenantContext is populated when a tenant
+// permission is evaluated.
 internal sealed class PermissionAuthorizationHandler(
     IPermissionProvider permissionProvider,
     ITenantContext tenantContext) : AuthorizationHandler<PermissionRequirement>
@@ -16,13 +18,6 @@ internal sealed class PermissionAuthorizationHandler(
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
-        // SuperAdmin holds cross-tenant platform authority — not modelled as a single permission.
-        if (context.User.IsInRole("SuperAdmin"))
-        {
-            context.Succeed(requirement);
-            return;
-        }
-
         var subject = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? context.User.FindFirstValue("sub");
 

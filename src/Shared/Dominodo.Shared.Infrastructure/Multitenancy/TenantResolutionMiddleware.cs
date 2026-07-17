@@ -1,7 +1,6 @@
 using Dominodo.Shared.Abstractions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace Dominodo.Shared.Infrastructure.Multitenancy;
 
@@ -13,8 +12,6 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next)
     public async Task Invoke(HttpContext ctx, ITenantDirectory directory)
     {
         var slug = ctx.Request.Headers[TenantHeader].ToString();
-        var isAuthenticated = ctx.User.Identity?.IsAuthenticated ?? false;
-        var isTenantUser = isAuthenticated && !ctx.User.IsInRole("SuperAdmin");
 
         if (!string.IsNullOrWhiteSpace(slug))
         {
@@ -26,24 +23,12 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next)
             }
 
             ctx.Items[TenantIdKey] = tenantId.Value;
+        }
 
-            // TODO (Fase 4 — Membership slice, doc 12): the `tenant_id` claim checked below is never
-            // emitted and assumes ONE tenant per token, which is incompatible with a user belonging to
-            // many tenants. Replace this reconciliation with a Membership check — an authenticated
-            // caller may act on the resolved tenant iff they have a Membership in it (SuperAdmin exempt).
-            if (isTenantUser &&
-                Guid.TryParse(ctx.User.FindFirstValue("tenant_id"), out var claimTenantId) &&
-                claimTenantId != tenantId.Value)
-            {
-                await RejectAsync(ctx, 403, "Tenant.Mismatch", "Token tenant does not match the requested tenant.");
-                return;
-            }
-        }
-        else if (isTenantUser && ctx.User.FindFirstValue("tenant_id") is not null)
-        {
-            await RejectAsync(ctx, 403, "Tenant.Mismatch", "Tenant header is required for authenticated users.");
-            return;
-        }
+        // TODO (Fase 4 — Membership slice, doc 12): enforce that an authenticated caller may act on
+        // the resolved tenant only if they have a Membership in it. This replaces the old, inert
+        // `tenant_id`-claim reconciliation (that claim was never emitted and assumed one tenant per
+        // token). Cross-tenant authority must be a permission, not a hardcoded role — no IsInRole here.
 
         await next(ctx);
     }

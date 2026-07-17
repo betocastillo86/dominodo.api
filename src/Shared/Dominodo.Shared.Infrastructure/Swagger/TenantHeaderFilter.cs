@@ -24,7 +24,7 @@ internal sealed class TenantHeaderFilter : IOperationFilter
             Name = TenantHeaders.Name,
             In = ParameterLocation.Header,
             Required = false,
-            Description = "Tenant/site slug. Required for authenticated tenant (non-SuperAdmin) users.",
+            Description = "Tenant/site slug. Required to act within a specific tenant; omit for cross-tenant (platform) calls.",
             Schema = new OpenApiSchema { Type = "string" }
         });
     }

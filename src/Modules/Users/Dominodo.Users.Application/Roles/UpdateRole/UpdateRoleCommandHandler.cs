@@ -17,8 +17,8 @@ internal sealed class UpdateRoleCommandHandler(
             return Error.NotFound("Role.NotFound", "Role not found.");
         }
 
-        // System roles are load-bearing (e.g. the SuperAdmin name backs the authorization policy) —
-        // they cannot be renamed or have their permissions reassigned through this endpoint.
+        // System roles are load-bearing (e.g. SuperAdmin carries every permission, which is how it
+        // resolves to full access) — they cannot be renamed or reassigned through this endpoint.
         if (role.IsSystem)
         {
             return Error.Forbidden("Role.SystemImmutable", "System roles cannot be modified.");

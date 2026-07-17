@@ -1,6 +1,5 @@
 using Dominodo.Shared.Kernel;
 using Microsoft.AspNetCore.Http;
-using System.Security.Claims;
 
 namespace Dominodo.Shared.Infrastructure.Multitenancy;
 
@@ -32,7 +31,4 @@ internal sealed class HttpTenantContext(IHttpContextAccessor httpContextAccessor
             return ctx is not null && ctx.Items.ContainsKey(TenantIdKey);
         }
     }
-
-    public bool IsSuperAdmin =>
-        httpContextAccessor.HttpContext?.User.IsInRole("SuperAdmin") ?? false;
 }
