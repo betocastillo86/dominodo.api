@@ -1,4 +1,6 @@
+using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Infrastructure.Http;
+using Dominodo.Shared.Kernel.Authorization;
 using Dominodo.Shared.Kernel.Pagination;
 using Dominodo.Users.Application.Roles;
 using Dominodo.Users.Application.Roles.CreateRole;
@@ -6,14 +8,13 @@ using Dominodo.Users.Application.Roles.GetRoleById;
 using Dominodo.Users.Application.Roles.GetRoles;
 using Dominodo.Users.Application.Roles.UpdateRole;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dominodo.Users.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[HasPermission(Permissions.RolesManage)]
 [Produces("application/json")]
 [Route("api/v{version:apiVersion}/roles")]
 public sealed class RolesController(ISender sender) : ControllerBase
@@ -38,8 +39,7 @@ public sealed class RolesController(ISender sender) : ControllerBase
     }
 
     [HttpPost]
-    [EndpointSummary("Creates a new role. Requires the SuperAdmin policy.")]
-    [Authorize(Policy = "SuperAdmin")]
+    [EndpointSummary("Creates a new role. Requires the roles.manage permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -60,8 +60,7 @@ public sealed class RolesController(ISender sender) : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    [EndpointSummary("Updates an existing role. Requires the SuperAdmin policy.")]
-    [Authorize(Policy = "SuperAdmin")]
+    [EndpointSummary("Updates an existing role. Requires the roles.manage permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

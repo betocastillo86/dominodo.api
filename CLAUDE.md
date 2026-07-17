@@ -73,6 +73,7 @@ relevant one on demand before touching that concern. Do not guess a pattern; con
 | Anything touching TenantId / scoping            | `docs/architecture/09-multitenancy.md`              |
 | Write tests (only when explicitly asked)        | `docs/architecture/10-testing.md`                   |
 | Tracing, idempotency, pagination, versioning    | `docs/architecture/11-cross-cutting.md`             |
+| Protect an endpoint by permission (not role)    | `docs/architecture/12-permission-authorization.md`  |
 
 The full index and solution map is in `docs/architecture/README.md`.
 

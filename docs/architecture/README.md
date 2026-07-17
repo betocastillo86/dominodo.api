@@ -129,6 +129,7 @@ Additional invariants:
 | 09 | [Multitenancy](./09-multitenancy.md) | TenantId, ITenantContext, on-demand scoping |
 | 10 | [Testing](./10-testing.md) | Opt-in testing: architecture tests (always), E2E + unit/integration on demand |
 | 11 | [Cross-Cutting Concerns](./11-cross-cutting.md) | Tracing, idempotency, pagination, versioning, health |
+| 12 | [Permission-based Authorization](./12-permission-authorization.md) | Authorize by permission (not role), server-side resolution, per-tenant effective permissions |
 
 ## Naming conventions
 

@@ -27,6 +27,10 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next)
 
             ctx.Items[TenantIdKey] = tenantId.Value;
 
+            // TODO (Fase 4 — Membership slice, doc 12): the `tenant_id` claim checked below is never
+            // emitted and assumes ONE tenant per token, which is incompatible with a user belonging to
+            // many tenants. Replace this reconciliation with a Membership check — an authenticated
+            // caller may act on the resolved tenant iff they have a Membership in it (SuperAdmin exempt).
             if (isTenantUser &&
                 Guid.TryParse(ctx.User.FindFirstValue("tenant_id"), out var claimTenantId) &&
                 claimTenantId != tenantId.Value)

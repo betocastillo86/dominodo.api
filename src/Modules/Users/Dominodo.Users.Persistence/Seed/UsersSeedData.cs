@@ -1,4 +1,5 @@
 using Dominodo.Users.Domain.Roles;
+using PermissionCodes = Dominodo.Shared.Kernel.Authorization.Permissions;
 
 namespace Dominodo.Users.Persistence.Seed;
 
@@ -35,17 +36,17 @@ public static class UsersSeedData
 
     public static IReadOnlyList<Permission> Permissions { get; } = new List<Permission>
     {
-        new(1,  "users.manage",          "Gestionar usuarios.",                   "Usuarios"),
-        new(2,  "roles.manage",          "Gestionar roles y permisos.",           "Usuarios"),
-        new(3,  "requests.create",       "Crear solicitudes (PQRS).",             "Solicitudes"),
-        new(4,  "requests.manage",       "Gestionar solicitudes (PQRS).",         "Solicitudes"),
-        new(5,  "deliveries.register",   "Registrar paquetería.",                 "Paquetería"),
-        new(6,  "deliveries.manage",     "Gestionar paquetería.",                 "Paquetería"),
-        new(7,  "visits.register",       "Registrar visitas.",                    "Visitas"),
-        new(8,  "announcements.manage",  "Gestionar boletines.",                  "Comunicaciones"),
-        new(9,  "settings.manage",       "Gestionar configuración.",              "Administración"),
-        new(10, "tenants.create",        "Crear conjuntos residenciales.",        "Plataforma"),
-        new(11, "tenants.manage",        "Gestionar conjuntos residenciales.",    "Plataforma")
+        new(1,  PermissionCodes.UsersManage,         "Gestionar usuarios.",                   "Usuarios"),
+        new(2,  PermissionCodes.RolesManage,         "Gestionar roles y permisos.",           "Usuarios"),
+        new(3,  PermissionCodes.RequestsCreate,      "Crear solicitudes (PQRS).",             "Solicitudes"),
+        new(4,  PermissionCodes.RequestsManage,      "Gestionar solicitudes (PQRS).",         "Solicitudes"),
+        new(5,  PermissionCodes.DeliveriesRegister,  "Registrar paquetería.",                 "Paquetería"),
+        new(6,  PermissionCodes.DeliveriesManage,    "Gestionar paquetería.",                 "Paquetería"),
+        new(7,  PermissionCodes.VisitsRegister,      "Registrar visitas.",                    "Visitas"),
+        new(8,  PermissionCodes.AnnouncementsManage, "Gestionar boletines.",                  "Comunicaciones"),
+        new(9,  PermissionCodes.SettingsManage,      "Gestionar configuración.",              "Administración"),
+        new(10, PermissionCodes.TenantsCreate,       "Crear conjuntos residenciales.",        "Plataforma"),
+        new(11, PermissionCodes.TenantsManage,       "Gestionar conjuntos residenciales.",    "Plataforma")
     };
 
     // SuperAdmin gets every permission.

@@ -1,0 +1,138 @@
+---
+name: domi-add-e2e-test
+description: Write black-box HTTP E2E tests for a Dominodo API endpoint (hand-written Refit client, models, RequestBuilder, NUnit tests). Use in the dominodo.api repo when asked to add E2E coverage for an endpoint.
+---
+
+# Add an E2E test to the Dominodo suite
+
+The E2E suite (`tests/e2e/Dominodo.E2E.sln`) tests the API **as a black box over HTTP**, sharing **zero
+code with `src/`**. Models and routes are **written by hand** so that if the API drifts, the test
+**breaks loudly** — that break is the product. This skill is the operational recipe.
+
+## How the user asks
+
+An endpoint + a list of `status → scenario` cases (e.g. *"get all roles: 401, 403 sin permiso manage
+roles, 400 invalid pagination, 200 verificar roles"*). Each bullet becomes one `[Test]` named
+`_<status>_<scenario>`.
+
+## Step 1 — Discover the truth from `src/` (never from Swagger, never guess)
+
+Open the real controller `src/Modules/<Module>/Dominodo.<Module>.Api/Controllers/<Name>Controller.cs`
+and its Application/Contracts DTOs. Extract, per endpoint:
+
+- **Route + verb + version** → `/api/v1/...` (routes read `api/v{version:apiVersion}`; default = v1).
+- **Auth**: `[Authorize]` = any valid bearer (else 401); `[Authorize(Policy = "SuperAdmin")]` or a
+  permission requirement = 403 without it. Anonymous endpoints take no token.
+- **Query/body shape** → the fields + types to hand-replicate as a `*Model`.
+- **Success shape** → `PagedResult<Dto>` (→ `PagedResultModel<T>`), a `Dto`, a created id, or 204.
+- **Error codes** → the `Error` codes the handler returns (e.g. `Validation.Failed`, `Role.NotFound`).
+  The API's `title` in the RFC 9457 body **is** the error code.
+
+> If a case isn't reachable yet (a permission not wired, or tenancy — see README §7), say so and adjust
+> rather than writing a test that can't pass.
+
+## Step 2 — Locate / create the module test project
+
+One test project per module: `tests/e2e/tests/Dominodo.E2E.Tests.<Module>`. Users exists as the
+**exemplar — copy its shape**. The client, models and builder live in
+`tests/e2e/src/Dominodo.E2E.Clients/Modules/<Module>/`. If the module project doesn't exist yet, mirror
+`Dominodo.E2E.Tests.Users` (a one-line `SetUpFixture : E2ESetupFixtureBase`, `appsettings.json`, a
+`Base<Module>Tests`) and register its client in `ClientsServiceRegister` + `E2ESetupFixtureBase`.
+
+## Step 3 — Models (hand-written, `Model` suffix)
+
+In `Modules/<Module>/Models/`, one record per request/response, mirroring the API DTO **by value**.
+Reuse `CreatedModel`, `PagedResultModel<T>`, `ProblemDetailsModel` from `Clients.Core`. Naming:
+`New<Noun>Model` (create), `Update<Noun>Model` (edit), `<Noun>Model` (response), `<Noun>FilterModel`
+(query string). Use `sealed record` with `init` setters so tests override via `model with { ... }`
+(e.g. `RoleModel { int Id; string Name; string? Description }`).
+
+## Step 4 — Refit client method (`I<Module>Client`)
+
+Hand-written versioned route. Token flows via `[Authorize("Bearer")]` (**null ⇒ anonymous**, which is
+how you test 401). Return `ApiResponse<T>` (or `IApiResponse` when you only assert the status).
+
+```csharp
+[Get("/api/v1/roles")]
+Task<ApiResponse<PagedResultModel<RoleModel>>> GetRoles(
+    [Query] int page = 1,
+    [Query] int pageSize = 20,
+    [Authorize("Bearer")] string? token = null);
+```
+
+## Step 5 — RequestBuilder (the Arrange)
+
+`<Module>RequestBuilder : BaseRequestBuilder`, injected the module's client. Two kinds of method:
+- `Build<Noun>Model(...)` — valid fake data by default (use `Faker.E164Phone()`, `Faker.StrongPassword()`,
+  and `DominodoFakerExtensions`), every field overridable. **Does NOT call the API.**
+- `<Setup>Async(...)` — a full Arrange that **calls the API** to create prerequisites, and **throws on
+  non-success** (a broken Arrange must abort the test, not produce a misleading Assert).
+
+Register the builder in `ClientsServiceRegister.Add<Module>Client()`.
+
+## Step 6 — The test class
+
+`<Verb><Noun>Tests : Base<Module>Tests` (which exposes `<Module>Client`, `<Module>RequestBuilder`, and
+inherited `JwtTokenFactory`, `Faker`, `Fixture`). Structure every test **Arrange → Act → Assert**:
+- **Arrange** with builders only.
+- **Act** = exactly **one** call to the client under test. The client appears **only** here.
+- **Assert** on `StatusCode`, `Content`, and/or the `ProblemDetailsModel` via
+  `ShouldHaveValidationError(prop)` / `ShouldHaveErrorCode(code)`.
+
+Auth in Act: `JwtTokenFactory.CreateSuperAdminToken()` for an authorized call; a plain
+`CreateUserToken(Guid.NewGuid(), "SomeRole")` for a token that lacks a permission (→ 403); no token
+(null) for 401.
+
+```csharp
+[TestFixture]
+public sealed class GetRolesTests : BaseUsersTests
+{
+    [Test]
+    public async Task _401_WhenAnonymous()
+    {
+        var response = await UsersClient.GetRoles();                       // Act — no token
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+    [Test]
+    public async Task _403_WhenUserLacksManageRoles()
+    {
+        var token = JwtTokenFactory.CreateUserToken(Guid.NewGuid());       // valid, no role/permission
+        var response = await UsersClient.GetRoles(token: token);
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+    [Test]
+    public async Task _400_WhenPaginationInvalid()
+    {
+        var token = JwtTokenFactory.CreateSuperAdminToken();
+        var response = await UsersClient.GetRoles(page: 0, pageSize: -1, token: token);
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.ShouldHaveErrorCode("Validation.Failed");
+    }
+    [Test]
+    public async Task _200_ReturnsRoles()
+    {
+        var token = JwtTokenFactory.CreateSuperAdminToken();
+        var response = await UsersClient.GetRoles(token: token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Content!.Items.ShouldNotBeEmpty();
+    }
+}
+```
+
+## Non-negotiables (checklist)
+
+- [ ] Models replicated **by hand**, not referenced/copied from `src/` or generated from OpenAPI.
+- [ ] Client used **only** inside `Act`; all Arrange via the builder.
+- [ ] Builder Arrange helpers that hit the API **throw on non-success**.
+- [ ] Test names `_<status>_<scenario>`; class `<Verb><Noun>Tests`.
+- [ ] Conflict/duplicate tests build their own unique prerequisite (fresh fake data) — tests share one
+      DB, so isolate by per-test data, never by resets or fixed state.
+- [ ] Cross-module effects (integration events) asserted via `RetryPolicies.Until<T>` polling, never an
+      immediate assert.
+
+## Run it
+
+The API + SQL Server must be up. Bring up SQL Server (`docker compose up -d --wait`; local port
+**1435**), run the API in Development (`dotnet run --project src/Bootstrap/Dominodo.Api`), point the E2E
+`appsettings.json`/`appsettings.Local.json` `BaseUrl` at it, and set the `Jwt` triple to **match the
+running environment** so minted tokens validate. Then: `dotnet test tests/e2e/Dominodo.E2E.sln`.

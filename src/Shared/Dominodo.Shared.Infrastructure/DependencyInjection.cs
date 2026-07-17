@@ -7,6 +7,7 @@ using Dominodo.Shared.Infrastructure.Persistence;
 using Dominodo.Shared.Infrastructure.Time;
 using Dominodo.Shared.Kernel;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -96,8 +97,15 @@ public static class DependencyInjection
                 };
             });
 
-        services.AddAuthorizationBuilder()
-            .AddPolicy("SuperAdmin", policy => policy.RequireRole("SuperAdmin"));
+        // Core authorization services. Endpoints authorize by permission (doc 12), not by named
+        // policy, so no policies are registered here. SuperAdmin is a runtime bypass in the handler.
+        services.AddAuthorization();
+
+        // Permission-based authorization: [HasPermission(code)] → "perm:<code>" policy, built on the
+        // fly by PermissionPolicyProvider and evaluated by PermissionAuthorizationHandler against the
+        // caller's effective permissions. See docs/architecture/12-permission-authorization.md.
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+        services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
         return services;
     }

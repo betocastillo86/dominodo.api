@@ -33,6 +33,11 @@ builder.Services.AddUsersPersistence();
 builder.Services.AddAdminModule(builder.Configuration);
 builder.Services.AddAdminPersistence();
 
+// Permission resolution port (doc 12) — implemented here because it bridges to the Users facade,
+// which Shared.Infrastructure may not reference. Cached per (userId, tenant) with a short TTL.
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<Dominodo.Shared.Abstractions.IPermissionProvider, Dominodo.Api.Auth.CachingPermissionProvider>();
+
 // Message bus (Wolverine, MIT — doc 07). Durable local queues are the in-process transport today;
 // swapping to RabbitMQ / Azure Service Bus is config only. Each module enrolls its own DbContext +
 // ancillary SQL Server message store (its own schema); the shared envelope storage lives in "wolverine".

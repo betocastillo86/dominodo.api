@@ -1,15 +1,16 @@
+using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Infrastructure.Http;
+using Dominodo.Shared.Kernel.Authorization;
 using Dominodo.Users.Application.Permissions.GetPermissions;
 using Dominodo.Users.Contracts;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dominodo.Users.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[HasPermission(Permissions.RolesManage)]
 [Produces("application/json")]
 [Route("api/v{version:apiVersion}/permissions")]
 public sealed class PermissionsController(ISender sender) : ControllerBase
