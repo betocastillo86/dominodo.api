@@ -1,5 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <!-- The extended analyzer rules (RS1035) are for Roslyn-analyzer assemblies and ban File/Process.
+         This is the composition-root host, not an analyzer; it legitimately does file IO and launches
+         Docker in DevBootstrap. The rule is enabled globally in Directory.Build.props; opt out here. -->
+    <EnforceExtendedAnalyzerRules>false</EnforceExtendedAnalyzerRules>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Swashbuckle.AspNetCore" />

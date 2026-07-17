@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dominodo.Users.Persistence.Migrations
 {
     [DbContext(typeof(UsersDbContext))]
-    [Migration("20260716203752_InitialUsers")]
+    [Migration("20260717183503_InitialUsers")]
     partial class InitialUsers
     {
         /// <inheritdoc />
@@ -471,8 +471,8 @@ namespace Dominodo.Users.Persistence.Migrations
                             Email = "superadmin@dominodo.local",
                             FirstName = "Super",
                             LastName = "Admin",
-                            PasswordHash = "$2a$11$F4OymXd2ZrDSdu9WIJDuQumacTFvI2uzij0pELIuDLLsQGJITBnb6",
-                            Phone = "+573000000001",
+                            PasswordHash = "$2b$11$3qiA6Ogz7cU0k/slUmOy5uiFJOvKStCMp0VjaMPqiw7ry8PxOm71i",
+                            Phone = "+1111111",
                             PhoneVerifiedAtUtc = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             PreferredLanguage = "es",
                             Status = "Active",

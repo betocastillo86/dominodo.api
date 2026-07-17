@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Refit" />
+    <PackageReference Include="Refit.HttpClientFactory" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dominodo.E2E.Clients.Core\Dominodo.E2E.Clients.Core.csproj" />
+    <ProjectReference Include="..\Dominodo.E2E.Core\Dominodo.E2E.Core.csproj" />
+  </ItemGroup>
+
+</Project>

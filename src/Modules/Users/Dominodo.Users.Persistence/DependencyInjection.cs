@@ -50,4 +50,14 @@ public static class DependencyInjection
         opts.PersistMessagesWithSqlServer(connectionString, role: MessageStoreRole.Ancillary)
             .Enroll<UsersDbContext>();
     }
+
+    // Applies this module's pending EF migrations. Public entry point so the host can migrate the module
+    // (dev convenience) without UsersDbContext leaving the assembly — it stays internal. Idempotent:
+    // MigrateAsync only runs migrations not yet recorded in __ef_migrations.
+    public static async Task MigrateUsersDatabaseAsync(this IServiceProvider services, CancellationToken ct = default)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
+        await db.Database.MigrateAsync(ct);
+    }
 }

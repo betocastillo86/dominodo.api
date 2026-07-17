@@ -79,6 +79,12 @@ var app = builder.Build();
 
 app.UseSharedInfrastructure();
 
+// Dev convenience: ensure the local DB container is up + migrated before serving (idempotent, F5-friendly).
+if (app.Environment.IsDevelopment())
+{
+    await app.EnsureLocalDatabaseAsync();
+}
+
 // Swagger is exposed only outside production (requirement #1). Never register it unconditionally.
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("IntegrationTests"))
 {

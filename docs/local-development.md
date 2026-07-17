@@ -20,6 +20,16 @@ docker compose up -d --wait
 
 # 2. Apply each module's migrations (creates the users/admin schemas + seed).
 #    Wolverine auto-provisions its "wolverine" schema on host startup (UseResourceSetupOnStartup).
+./scripts/db.sh
+```
+
+`./scripts/db.sh` runs `dotnet ef database update` for every module context in one go (see below).
+In **Development** the host also does this for you on startup (see "Automatic startup bootstrap"); the
+script + manual commands remain for CI, resets, and running a single context.
+
+Under the hood it is just these two commands (useful if you need to run one context on its own):
+
+```bash
 dotnet ef database update \
   --project src/Modules/Users/Dominodo.Users.Persistence \
   --startup-project src/Bootstrap/Dominodo.Api --context UsersDbContext
@@ -28,6 +38,41 @@ dotnet ef database update \
   --project src/Modules/Admin/Dominodo.Admin.Persistence \
   --startup-project src/Bootstrap/Dominodo.Api --context AdminDbContext
 ```
+
+### Automatic startup bootstrap (Development only)
+
+When the host runs under `ASPNETCORE_ENVIRONMENT=Development` (e.g. pressing F5 in Rider/VS, or
+`dotnet run`), `DevBootstrap` (`src/Bootstrap/Dominodo.Api/DevBootstrap.cs`) runs before the app serves:
+
+1. Probes the DB port from the connection string. If it is **not** reachable, it runs
+   `docker compose up -d --wait` from the repo root — so you don't need to start the container by hand.
+   If the DB is already up, Docker is skipped.
+2. Applies each module's pending migrations (`MigrateAsync`, idempotent).
+
+Everything is best-effort: if a migration fails (e.g. the model drifted ahead of its last migration, or
+Docker isn't installed), it logs an actionable warning and **still boots** against the existing schema —
+it never blocks startup. It never runs outside Development.
+
+Opt out (use your own DB / start it yourself) by setting in `appsettings.Development.json` or an env var:
+
+```jsonc
+{ "DevBootstrap": { "Enabled": false } }
+```
+
+### Migration commands (`scripts/db.sh`)
+
+Each module has its own DbContext + schema, so each migrates separately. The script wraps all module
+contexts (defined in a `MODULES` array — add a line per new module):
+
+```bash
+./scripts/db.sh          # apply pending migrations to every context (dotnet ef database update)
+./scripts/db.sh reset    # drop + update: clean rebuild with seed
+./scripts/db.sh drop     # drop the database only (deletes everything)
+./scripts/db.sh add Foo  # create migration "Foo" across every context
+```
+
+> For adding a migration to a **single** module (the usual case), prefer the direct
+> `dotnet ef migrations add <Name> --project <module>/…Persistence --context <Ctx> --output-dir Migrations`.
 
 ### Day-to-day commands
 

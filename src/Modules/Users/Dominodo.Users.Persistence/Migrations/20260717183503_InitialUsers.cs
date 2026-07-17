@@ -195,7 +195,7 @@ namespace Dominodo.Users.Persistence.Migrations
                 schema: "users",
                 table: "Users",
                 columns: new[] { "Id", "AvatarUrl", "CreatedAtUtc", "DocumentNumber", "DocumentType", "Email", "EmailVerifiedAtUtc", "FirstName", "LastName", "PasswordHash", "Phone", "PhoneVerifiedAtUtc", "PreferredLanguage", "Profile", "Status", "UpdatedAtUtc" },
-                values: new object[] { new Guid("00000000-0000-0000-0000-000000000001"), null, new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), null, null, "superadmin@dominodo.local", null, "Super", "Admin", "$2a$11$F4OymXd2ZrDSdu9WIJDuQumacTFvI2uzij0pELIuDLLsQGJITBnb6", "+573000000001", new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "es", null, "Active", new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) });
+                values: new object[] { new Guid("00000000-0000-0000-0000-000000000001"), null, new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), null, null, "superadmin@dominodo.local", null, "Super", "Admin", "$2b$11$3qiA6Ogz7cU0k/slUmOy5uiFJOvKStCMp0VjaMPqiw7ry8PxOm71i", "+1111111", new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)), "es", null, "Active", new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)) });
 
             migrationBuilder.InsertData(
                 schema: "users",

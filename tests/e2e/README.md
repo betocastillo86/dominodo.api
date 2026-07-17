@@ -55,8 +55,11 @@ technical debt; it is the barrier that stops a bug and its test from moving toge
 
 ## 3. Solution layout
 
-Mirrors the Pollaya model, renamed to Dominodo and aligned to the module vocabulary
-(`Users`, `Tenants`, `Operations`, `Admin`).
+Mirrors the Pollaya model, renamed to Dominodo. **Current reality (2026-07):** the API has two modules,
+`Users` and `Admin`, and only `Users` exposes controllers (`auth`, `users`, `roles`, `permissions`).
+So the suite ships **one** test project today — `Dominodo.E2E.Tests.Users`. `Tenants` and `Operations`
+are **not yet — those modules do not exist**; `Admin` gets a test project once it ships controllers.
+Each new module copies the Users exemplar.
 
 ```
 tests/e2e/                                  # E2E solution root — NOT included in Dominodo.sln
@@ -95,14 +98,15 @@ tests/e2e/                                  # E2E solution root — NOT included
       ClientsServiceRegister.cs             #   AddUsersClient(), AddTenantsClient(), ... + handlers
 
   tests/
-    Dominodo.E2E.Tests.Shared/              # shared base classes + fixture + seeding
-      BaseE2ETests.cs                       #   Fixture, Faker, correlation/test-name per test
-      E2ESetupFixtureBase.cs                #   OneTimeSetUp: DI + default-tenant seeding
-      Seeding/                              #   seeds default tenant, roles, super-admin
+    Dominodo.E2E.Tests.Shared/              # shared base classes + fixture + seeding seam + assertions
+      BaseE2ETests.cs                       #   Fixture, Faker, JwtTokenFactory, correlation/test-name
+      E2ESetupFixtureBase.cs                #   OneTimeSetUp: DI + health wait; SeedAsync() = no-op seam
+      Assertions/                           #   ProblemDetailsAssertions (ShouldHaveValidationError, …)
+      Seeding/                              #   ISeeder seam (no DB seed yet — super-admin via minted JWT)
     Dominodo.E2E.Tests.Users/               # 1 project per module (SetUpFixture is per-assembly)
-    Dominodo.E2E.Tests.Tenants/
-    Dominodo.E2E.Tests.Operations/
-    Dominodo.E2E.Tests.Admin/
+    # Dominodo.E2E.Tests.Admin/            # added once Admin ships controllers
+    # Dominodo.E2E.Tests.Tenants/          # NOT YET — the Tenants module does not exist
+    # Dominodo.E2E.Tests.Operations/       # NOT YET — the Operations module does not exist
 ```
 
 **Project dependencies** (all point "toward the core", just as the API points inward):
@@ -173,14 +177,7 @@ Three barriers, cheapest to strongest:
 
 1. **Separate solution.** `Dominodo.E2E.sln` never includes projects from `src/`, and `Dominodo.sln`
    (the API's) never includes `tests/e2e/`.
-2. **CI guard.** A check that fails the build if a `ProjectReference` leaves `tests/e2e/` toward `src/`:
-
-   ```bash
-   # scripts/e2e-guard.sh — runs in the E2E workflow
-   if grep -rl --include="*.csproj" -E 'ProjectReference[^>]*\.\./\.\./src/' tests/e2e; then
-     echo "❌ The E2E suite cannot reference API projects (src/)."; exit 1
-   fi
-   ```
+2. **Architecture test.** `E2EIndependenceTests`
 3. **No codegen.** There is no MSBuild target or script that generates clients from the OpenAPI. If it is
    ever wanted, it is discussed as an architecture change — because it **breaks the core property** of
    this suite.
@@ -213,10 +210,25 @@ Convention: `Model` suffix (not `Dto`, to avoid confusion with the API's DTOs). 
 
 ## 7. Authentication and multitenancy in E2E
 
-Reflects `docs/architecture/09-multitenancy.md`: **the `X-Tenant` header slug decides the tenant; the JWT
-only validates** that the user belongs to that tenant.
+> **Current approach (2026-07) — read this first.** The OTP/real-login flow and multitenancy are
+> **deferred**. Two concrete decisions ground the first delivery:
+> - **Identity = minted JWTs.** The suite mints its own signed JWTs on demand (`JwtTokenFactory`,
+>   `E2E.Core/Security/`) using the API's `Jwt` triple (`Issuer`/`Audience`/`SecretKey`) from config,
+>   replicating `JwtTokenGenerator` exactly (HS256, `sub`+`jti`+`ClaimTypes.Role`). The E2E `Jwt`
+>   settings **must match the running API's** so tokens validate. The real cached-login provider below
+>   is the target state, **not yet implemented**.
+> - **Tenancy = out of scope.** There is no `Tenants` module and the tenant directory is
+>   `NullTenantDirectory` (no slug resolves). The reconciliation matrix below is **deferred until the
+>   `Tenants` module exists**. Consequence: anonymous endpoints (registration, get-by-id) work with no
+>   `X-Tenant`; authenticated endpoints are reachable **only with a minted SuperAdmin token** (SuperAdmin
+>   bypasses the tenant check — a regular token with no/unknown tenant gets `403`/`400`).
+> `AmbientTenantContext` + `TenantHeaderHandler` already exist but inject `X-Tenant` only when a slug is
+> set (none is, today).
 
-### Identity — cached real login
+The target design (below) reflects `docs/architecture/09-multitenancy.md`: **the `X-Tenant` header slug
+decides the tenant; the JWT only validates** that the user belongs to that tenant.
+
+### Identity — cached real login *(target state — deferred; today the suite mints JWTs, see the callout above)*
 
 An `IAuthTokenProvider` that calls the real auth endpoints and **caches by `(user, tenantSlug)`** to avoid
 re-logging in on every test. It exercises the real auth flow; the cost is that an auth bug takes down many
@@ -247,7 +259,12 @@ Pollaya-style):
 > the resource created in the test, not by tenant totals), and move any case sensitive to data volume to
 > its own tenant.
 
-### The reconciliation matrix as a first-class test
+### The reconciliation matrix as a first-class test *(deferred until the `Tenants` module exists)*
+
+> **Deferred.** With `NullTenantDirectory` no slug resolves, so most rows below cannot be exercised yet.
+> This matrix lands with the `Tenants` module. Until then the only tenant-related behavior covered is:
+> anonymous endpoints work with no header, and a minted **SuperAdmin** token reaches authenticated
+> endpoints (it bypasses the tenant check).
 
 Exactly the kind of bug a coupled test would mask. Cover the doc-09 table explicitly:
 
@@ -438,11 +455,24 @@ The E2E suite **follows** the API, on purpose and by intent. The flow:
 
 ## 13. Status and next steps
 
-This document **is the seed.** The `.csproj` files do not exist yet. To start the implementation:
+**Shipped (2026-07):** the registration-first Users exemplar.
 
-1. Create `Dominodo.E2E.sln` and the projects from §3 with the API's TFM.
-2. Implement `E2E.Clients.Core` (handlers) and `E2E.Core` (auth token provider, contexts, retry).
-3. Write the first module end-to-end by hand (`Users` or `Tenants`) as the **canonical exemplar** — the
-   one everything else copies — including its seeding and the tenant matrix.
-4. Add the CI guard (§5) and the docker-compose workflow (§9).
-5. From there, each API feature slice drags along its E2E slice (§10).
+- ✅ `Dominodo.E2E.sln` with the full plumbing: `E2E.Core` (contexts, Bogus fakers, Polly retry,
+  `JwtTokenFactory`), `E2E.Clients.Core` (handler chain + base models), `E2E.Clients` (Refit
+  `IUsersClient` + `UsersRequestBuilder`), `Tests.Shared` (bootstrap fixture + assertions).
+- ✅ **Users** covered end to end: registration (happy + 400/409), get-by-id (200/404), and a
+  minted-SuperAdmin JWT smoke (200 vs 401) — all green against a locally running API.
+- ✅ Independence enforced by architecture test (`E2EIndependenceTests` in `Dominodo.E2E.Tests.Architecture`).
+- ✅ `ProblemDetailsAssertions` (`ShouldHaveValidationError` / `ShouldHaveErrorCode`).
+
+**Next:**
+
+1. When the OTP/login provider lands, implement the real `IAuthTokenProvider` (§7) and retire JWT-minting.
+2. When the `Tenants` module lands, add its client/builder + the doc-09 reconciliation matrix (§7).
+3. When `Admin` ships controllers, add `Dominodo.E2E.Tests.Admin` (copy the Users exemplar).
+4. From there, each API feature slice drags along its E2E slice (§10).
+
+> **CI note.** The workflow runs the API in **Development** so its startup (`DevBootstrap`) migrates the
+> fresh DB — that is the API's normal startup path (no ad-hoc migration script). The API only
+> auto-migrates in Development; the `IntegrationTests` environment does **not**, so its DB must be
+> recreated before use if it has drifted.

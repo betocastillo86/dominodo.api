@@ -42,6 +42,9 @@ logs/
 *.cache
 .DS_Store
 
+# E2E local config overrides (gitignored; see tests/e2e/.../appsettings.Local.json.example)
+**/appsettings.Local.json
+
 # DotNet local tools/cache
 .dotnet/
 

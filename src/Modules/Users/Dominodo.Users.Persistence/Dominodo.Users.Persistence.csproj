@@ -16,4 +16,8 @@
     <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Infrastructure\Dominodo.Shared.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Migrations\" />
+  </ItemGroup>
+
 </Project>

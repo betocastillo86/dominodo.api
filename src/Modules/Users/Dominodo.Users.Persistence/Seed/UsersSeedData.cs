@@ -1,5 +1,4 @@
 using Dominodo.Users.Domain.Roles;
-using Dominodo.Users.Domain.Users;
 
 namespace Dominodo.Users.Persistence.Seed;
 
@@ -8,12 +7,12 @@ public static class UsersSeedData
 {
     // Fixed bootstrap SuperAdmin identity (stable across migrations).
     public static readonly Guid SuperAdminUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-    public const string SuperAdminPhone = "+573000000001";
+    public const string SuperAdminPhone = "+1111111";
     public const string SuperAdminEmail = "superadmin@dominodo.local";
-
-    // Pre-computed BCrypt hash of the bootstrap password "SuperAdmin123*" (workFactor 11).
+    
+    // Pre-computed BCrypt hash of the bootstrap password "123456" (workFactor 11).
     // Hardcoded so HasData stays deterministic (BCrypt salts are random per call).
-    public const string SuperAdminPasswordHash = "$2a$11$F4OymXd2ZrDSdu9WIJDuQumacTFvI2uzij0pELIuDLLsQGJITBnb6";
+    public const string SuperAdminPasswordHash = "$2b$11$3qiA6Ogz7cU0k/slUmOy5uiFJOvKStCMp0VjaMPqiw7ry8PxOm71i";
 
     // Role ids
     public const int SuperAdminRoleId = 1;
