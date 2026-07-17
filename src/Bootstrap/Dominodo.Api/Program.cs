@@ -5,6 +5,7 @@ using Dominodo.Admin.Persistence;
 using Dominodo.Api;
 using Dominodo.Shared.Application;
 using Dominodo.Shared.Infrastructure;
+using Dominodo.Shared.Infrastructure.Swagger;
 using Dominodo.Users.Application;
 using Dominodo.Users.Persistence;
 using JasperFx.CodeGeneration.Model;
@@ -66,8 +67,7 @@ builder.Services
     // Module controllers live in each module's *.Api assembly — register them as parts.
     // (Admin.Api added here once it exposes controllers.)
     .AddApplicationPart(typeof(Dominodo.Users.Api.IUsersApiMarker).Assembly);
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddDominodoSwagger();
 
 builder.Services.AddHealthChecks()
     .AddSqlServer(
@@ -79,10 +79,10 @@ var app = builder.Build();
 
 app.UseSharedInfrastructure();
 
+// Swagger is exposed only outside production (requirement #1). Never register it unconditionally.
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("IntegrationTests"))
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseDominodoSwagger();
 }
 
 app.MapControllers();

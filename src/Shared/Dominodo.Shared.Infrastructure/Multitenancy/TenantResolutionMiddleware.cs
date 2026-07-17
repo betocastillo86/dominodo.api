@@ -8,7 +8,7 @@ namespace Dominodo.Shared.Infrastructure.Multitenancy;
 public sealed class TenantResolutionMiddleware(RequestDelegate next)
 {
     private const string TenantIdKey = "TenantId";
-    private const string TenantHeader = "X-Tenant";
+    private const string TenantHeader = TenantHeaders.Name;
 
     public async Task Invoke(HttpContext ctx, ITenantDirectory directory)
     {

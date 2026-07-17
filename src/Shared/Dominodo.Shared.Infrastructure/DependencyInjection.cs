@@ -41,7 +41,13 @@ public static class DependencyInjection
             options.DefaultApiVersion = new ApiVersion(1);
             options.AssumeDefaultVersionWhenUnspecified = true;
             options.ReportApiVersions = true;
-        }).AddApiExplorer(options => options.GroupNameFormat = "'v'VVV");
+        }).AddApiExplorer(options =>
+        {
+            options.GroupNameFormat = "'v'VVV";
+            // Substitute the {version} route token with the concrete version so Swagger renders
+            // /api/v1/... instead of asking the caller to fill a "version" parameter per request.
+            options.SubstituteApiVersionInUrl = true;
+        });
 
         services.AddJwtAuthentication(configuration);
 

@@ -14,6 +14,10 @@ the backend maps to a `TenantId`. The JWT does **not** decide the tenant — whe
 - **Anonymous endpoints still get scoped** (public PQR form, visitor pre-registration) — a JWT-only scheme can't.
 - **Super-admins** target a tenant by setting the header, or omit it to read across all tenants.
 
+The header name lives in `Multitenancy/TenantHeaders.Name` (single source of truth, shared by the
+resolution middleware and Swagger) and is surfaced as an optional per-request parameter in Swagger —
+see `docs/architecture/11-cross-cutting.md`.
+
 We do **not** use a global EF query filter: super-admin reads across tenants would turn it into
 constant `IgnoreQueryFilters()` calls. Scoping stays explicit but funneled through one mechanism.
 

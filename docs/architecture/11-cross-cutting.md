@@ -99,8 +99,30 @@ builder.Services.AddApiVersioning(o =>
     o.DefaultApiVersion = new ApiVersion(1);
     o.AssumeDefaultVersionWhenUnspecified = true;
     o.ReportApiVersions = true;
-}).AddApiExplorer(o => o.GroupNameFormat = "'v'VVV");
+}).AddApiExplorer(o =>
+{
+    o.GroupNameFormat = "'v'VVV";
+    o.SubstituteApiVersionInUrl = true; // renders /api/v1/... instead of asking for a "version" param
+});
 ```
+
+## API documentation (Swagger / OpenAPI)
+
+Swagger is wired in `Shared.Infrastructure` via `AddDominodoSwagger(...)` / `UseDominodoSwagger()`
+(`Swagger/SwaggerExtensions.cs`) and is **only exposed outside production** — the host registers the
+middleware behind `if (env.IsDevelopment() || env.IsEnvironment("IntegrationTests"))`. Key pieces:
+
+- **One document per API version.** `ConfigureSwaggerOptions` loops `IApiVersionDescriptionProvider`
+  and emits a `SwaggerDoc` per version; `UseSwaggerUI` adds a dropdown endpoint per version. 
+  `SwaggerDefaultValuesFilter`, the `version` route token never appears as a manual parameter.
+- **Auth.** A `Bearer` (http/JWT) security definition lets you paste an access token into *Authorize*;
+  it is sent as `Authorization: Bearer <jwt>`.
+- **Tenant/site header.** `TenantHeaderFilter` surfaces the `X-Tenant` header
+  (`Multitenancy/TenantHeaders.Name`) as an optional per-request parameter on every operation.
+- **Response docs (attributes only, no XML comments).** Controllers declare
+  `[Produces("application/json")]`, per-status `[ProducesResponseType(typeof(...), ...)]` (errors typed
+  as `ProblemDetails`), and `[EndpointSummary("...")]` for the operation summary. There is **no** XML
+  doc file: documentation is driven purely by attributes, so `GenerateDocumentationFile` stays off.
 
 ## Health checks
 

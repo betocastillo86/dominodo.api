@@ -1,0 +1,31 @@
+# Infraestructura local de desarrollo para Dominodo.
+# Levanta el SQL Server que consumen los DbContext de cada módulo (schemas users/admin + wolverine).
+# La BD (schemas, tablas, seed) NO la crea este archivo: se aplica con `dotnet ef database update`
+# (ver docs del plan / Phase 2). Este compose solo provisiona el servidor.
+#
+#   docker compose up -d        # arranca el servidor (persistente entre reinicios)
+#   docker compose down         # lo detiene y elimina el container (los datos sobreviven en el volumen)
+#   docker compose down -v      # lo detiene y BORRA los datos (volumen incluido)
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: dominodo-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Dominodo!Pass123"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1435:1433"   # host 1435 -> container 1433 (las connection strings apuntan a 1435; no hay LocalDB en macOS)
+    volumes:
+      - dominodo-mssql-data:/var/opt/mssql   # persistencia real: los datos sobreviven a `down` y a reinicios
+    restart: unless-stopped
+    healthcheck:
+      # Marca el servicio "healthy" cuando el motor acepta conexiones, para que `--wait` sea fiable.
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  dominodo-mssql-data:

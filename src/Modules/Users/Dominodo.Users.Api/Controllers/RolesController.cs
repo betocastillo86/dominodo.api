@@ -1,4 +1,6 @@
 using Dominodo.Shared.Infrastructure.Http;
+using Dominodo.Shared.Kernel.Pagination;
+using Dominodo.Users.Application.Roles;
 using Dominodo.Users.Application.Roles.CreateRole;
 using Dominodo.Users.Application.Roles.GetRoleById;
 using Dominodo.Users.Application.Roles.GetRoles;
@@ -12,10 +14,13 @@ namespace Dominodo.Users.Api.Controllers;
 
 [ApiController]
 [Authorize]
+[Produces("application/json")]
 [Route("api/v{version:apiVersion}/roles")]
 public sealed class RolesController(ISender sender) : ControllerBase
 {
     [HttpGet]
+    [EndpointSummary("Lists roles, paged.")]
+    [ProducesResponseType(typeof(PagedResult<RoleDto>), StatusCodes.Status200OK)]
     public async Task<IResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
         var result = await sender.Send(new GetRolesQuery(page, pageSize), ct);
@@ -23,6 +28,9 @@ public sealed class RolesController(ISender sender) : ControllerBase
     }
 
     [HttpGet("{id:int}", Name = "GetRoleById")]
+    [EndpointSummary("Gets a role by its identifier.")]
+    [ProducesResponseType(typeof(RoleDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IResult> GetById(int id, CancellationToken ct)
     {
         var result = await sender.Send(new GetRoleByIdQuery(id), ct);
@@ -30,7 +38,12 @@ public sealed class RolesController(ISender sender) : ControllerBase
     }
 
     [HttpPost]
+    [EndpointSummary("Creates a new role. Requires the SuperAdmin policy.")]
     [Authorize(Policy = "SuperAdmin")]
+    [Consumes("application/json")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IResult> Create(CreateRoleRequest request, CancellationToken ct)
     {
         var result = await sender.Send(
@@ -47,7 +60,12 @@ public sealed class RolesController(ISender sender) : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [EndpointSummary("Updates an existing role. Requires the SuperAdmin policy.")]
     [Authorize(Policy = "SuperAdmin")]
+    [Consumes("application/json")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IResult> Update(int id, UpdateRoleRequest request, CancellationToken ct)
     {
         var result = await sender.Send(
