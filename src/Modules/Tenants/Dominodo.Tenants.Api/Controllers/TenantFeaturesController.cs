@@ -11,14 +11,15 @@ using Microsoft.AspNetCore.Mvc;
 namespace Dominodo.Tenants.Api.Controllers;
 
 // Feature flags per conjunto (domain-model §2.2). Platform-scoped — managed by SuperAdmin, so NO
-// X-Tenant header (the tenant is addressed by id in the route). Gated by tenants.manage (plan Phase 5).
+// X-Tenant header (the tenant is addressed by id in the route). Listing is gated by tenants.view,
+// enabling/disabling by tenants.edit (per-action).
 [ApiController]
-[HasPermission(Permissions.TenantsManage)]
 [Produces("application/json")]
 [Route("api/v{version:apiVersion}/tenants/{tenantId:guid}/features")]
 public sealed class TenantFeaturesController(ISender sender) : ControllerBase
 {
     [HttpGet]
+    [HasPermission(Permissions.TenantsView)]
     [EndpointSummary("Lists a tenant's feature flags.")]
     [ProducesResponseType(typeof(IReadOnlyList<TenantFeatureDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -29,7 +30,8 @@ public sealed class TenantFeaturesController(ISender sender) : ControllerBase
     }
 
     [HttpPut("{featureKey}")]
-    [EndpointSummary("Enables or disables a feature for a tenant (idempotent). Requires the tenants.manage permission.")]
+    [HasPermission(Permissions.TenantsEdit)]
+    [EndpointSummary("Enables or disables a feature for a tenant (idempotent). Requires the tenants.edit permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

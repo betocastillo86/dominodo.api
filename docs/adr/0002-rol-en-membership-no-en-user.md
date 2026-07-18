@@ -15,7 +15,7 @@ Aparte, se decidió que **propietario/arrendatario no son roles RBAC** sino el t
 apartamento (vive en `ApartmentResident.RelationType`).
 
 Pero asignar el rol *solo* dentro de un conjunto deja fuera las capacidades que existen **sin tenant** y
-que **preceden** a cualquier conjunto: crear/configurar conjuntos (`tenants.create`, `tenants.manage`),
+que **preceden** a cualquier conjunto: crear/administrar conjuntos (`tenants.create`, `tenants.view`, `tenants.edit`),
 gestionar el catálogo global de roles, operar cross-tenant. Cuando se crea el primer conjunto aún no
 hay ningún tenant al que colgar el permiso. Un `SuperAdmin` "usuario mágico" hardcodeado sería el
 anti-patrón a evitar: SuperAdmin debe ser un **rol** del sistema (ADR-0003), no un caso especial del

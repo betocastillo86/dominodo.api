@@ -32,7 +32,8 @@ public static class DominodoConstants
         public const string AnnouncementsManage = "announcements.manage";
         public const string SettingsManage      = "settings.manage";
         public const string TenantsCreate       = "tenants.create";
-        public const string TenantsManage       = "tenants.manage";
+        public const string TenantsView         = "tenants.view";
+        public const string TenantsEdit         = "tenants.edit";
     }
 
     public static class Defaults
@@ -61,7 +62,8 @@ public static class DominodoConstants
             ["announcements.manage"] = Guid.Parse("00000000-0000-0000-0000-000000001008"),
             ["settings.manage"]      = Guid.Parse("00000000-0000-0000-0000-000000001009"),
             ["tenants.create"]       = Guid.Parse("00000000-0000-0000-0000-000000001010"),
-            ["tenants.manage"]       = Guid.Parse("00000000-0000-0000-0000-000000001011"),
+            ["tenants.view"]         = Guid.Parse("00000000-0000-0000-0000-000000001011"),
+            ["tenants.edit"]         = Guid.Parse("00000000-0000-0000-0000-000000001012"),
         };
 
         public static Guid UserIdFor(string permission) =>

@@ -46,7 +46,8 @@ public static class UsersSeedData
         new(8,  PermissionCodes.AnnouncementsManage, "Gestionar boletines.",                  "Comunicaciones"),
         new(9,  PermissionCodes.SettingsManage,      "Gestionar configuración.",              "Administración"),
         new(10, PermissionCodes.TenantsCreate,       "Crear conjuntos residenciales.",        "Plataforma"),
-        new(11, PermissionCodes.TenantsManage,       "Gestionar conjuntos residenciales.",    "Plataforma")
+        new(11, PermissionCodes.TenantsView,         "Ver conjuntos residenciales.",          "Plataforma"),
+        new(12, PermissionCodes.TenantsEdit,         "Editar conjuntos residenciales.",       "Plataforma")
     };
 
     // SuperAdmin gets every permission.

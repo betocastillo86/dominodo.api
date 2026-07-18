@@ -15,15 +15,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace Dominodo.Tenants.Api.Controllers;
 
 // Tenant-scoped apartment management. Every endpoint REQUIRES the X-Tenant header — the resolved tenant
-// scopes all reads/writes (doc 09). Apartment administration is part of managing a conjunto, so all
-// operations are gated by tenants.manage (plan Phase 3).
+// scopes all reads/writes (doc 09). Reads are gated by tenants.view, writes by tenants.edit (per-action).
 [ApiController]
-[HasPermission(Permissions.TenantsManage)]
 [Produces("application/json")]
 [Route("api/v{version:apiVersion}/apartments")]
 public sealed class ApartmentsController(ISender sender) : ControllerBase
 {
     [HttpGet]
+    [HasPermission(Permissions.TenantsView)]
     [EndpointSummary("Lists apartments in the current tenant, paged and filterable.")]
     [ProducesResponseType(typeof(PagedResult<ApartmentDto>), StatusCodes.Status200OK)]
     public async Task<IResult> List(
@@ -39,6 +38,7 @@ public sealed class ApartmentsController(ISender sender) : ControllerBase
     }
 
     [HttpGet("{id:guid}", Name = "GetApartmentById")]
+    [HasPermission(Permissions.TenantsView)]
     [EndpointSummary("Gets an apartment by its identifier (within the current tenant).")]
     [ProducesResponseType(typeof(ApartmentDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -49,7 +49,8 @@ public sealed class ApartmentsController(ISender sender) : ControllerBase
     }
 
     [HttpPost]
-    [EndpointSummary("Creates an apartment in the current tenant. Requires the tenants.manage permission.")]
+    [HasPermission(Permissions.TenantsEdit)]
+    [EndpointSummary("Creates an apartment in the current tenant. Requires the tenants.edit permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -70,7 +71,8 @@ public sealed class ApartmentsController(ISender sender) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [EndpointSummary("Updates an apartment. Requires the tenants.manage permission.")]
+    [HasPermission(Permissions.TenantsEdit)]
+    [EndpointSummary("Updates an apartment. Requires the tenants.edit permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -91,7 +93,8 @@ public sealed class ApartmentsController(ISender sender) : ControllerBase
     }
 
     [HttpPut("{id:guid}/status")]
-    [EndpointSummary("Changes an apartment's status (occupied/vacant). Requires the tenants.manage permission.")]
+    [HasPermission(Permissions.TenantsEdit)]
+    [EndpointSummary("Changes an apartment's status (occupied/vacant). Requires the tenants.edit permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

@@ -19,7 +19,9 @@ contradice la decisión §3/§6 del modelo de dominio (el rol se asigna por ámb
 - Los **claims `role` del access token se derivan** de las asignaciones de ámbito `Platform` del usuario
   (join `PlatformRoleAssignment` → `Role` filtrado por `Scope = Platform`). El acceso cross-tenant del
   SuperAdmin **sale de tener los permisos**, no de una bandera.
-- Se agregaron los permisos de plataforma `tenants.create` y `tenants.manage` (grupo `Plataforma`).
+- Se agregaron los permisos de plataforma del grupo `Plataforma`: `tenants.create`, `tenants.view` y
+  `tenants.edit` (originalmente `tenants.create` + `tenants.manage`; este último se dividió en
+  view/edit al implementar el módulo `Tenants`).
 - La política de autorización `SuperAdmin` (endpoints de escritura de roles) verifica ese claim derivado.
 
 ## Consecuencias

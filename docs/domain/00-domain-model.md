@@ -155,7 +155,9 @@ por conjunto vive en `Membership`.
 | `Group` | `string` | Para agrupar en UI (`Solicitudes`, `Paquetería`, `Plataforma`…) |
 
 **Permisos de plataforma** (grupo `Plataforma`): capacidades que existen **sin tenant** y preceden a
-cualquier conjunto — `tenants.create`, `tenants.manage`. Se conceden por roles de ámbito `Platform`.
+cualquier conjunto — `tenants.create` (crear conjuntos), `tenants.view` (leer conjuntos/apartamentos/
+residentes/features) y `tenants.edit` (escribir todo lo de un conjunto salvo crearlo). Se conceden por
+roles de ámbito `Platform`.
 
 > **Permisos = catálogo ligado al código** (hay un `if` que los verifica). **No** hay CRUD de permisos.
 > El **permiso no lleva scope**: es una capacidad neutra. Quién la ejerce y con qué alcance lo

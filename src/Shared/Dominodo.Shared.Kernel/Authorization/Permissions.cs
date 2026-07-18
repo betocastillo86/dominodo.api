@@ -27,7 +27,8 @@ public static class Permissions
     // Administración
     public const string SettingsManage = "settings.manage";
 
-    // Plataforma (tenant-independent)
-    public const string TenantsCreate = "tenants.create";
-    public const string TenantsManage = "tenants.manage";
+    // Plataforma / Conjuntos (tenant-independent)
+    public const string TenantsCreate = "tenants.create";  // create a new conjunto
+    public const string TenantsView = "tenants.view";      // read tenants, apartments, residents, features
+    public const string TenantsEdit = "tenants.edit";      // write everything under a conjunto (except create)
 }
