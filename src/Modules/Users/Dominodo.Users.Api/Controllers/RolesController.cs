@@ -30,7 +30,7 @@ public sealed class RolesController(ISender sender) : ControllerBase
 
     [HttpGet("{id:int}", Name = "GetRoleById")]
     [EndpointSummary("Gets a role by its identifier.")]
-    [ProducesResponseType(typeof(RoleDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RoleDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IResult> GetById(int id, CancellationToken ct)
     {

@@ -4,21 +4,26 @@ using Dominodo.Users.Domain.Ports;
 
 namespace Dominodo.Users.Application.Roles.GetRoleById;
 
-internal sealed class GetRoleByIdQueryHandler(IRoleRepository roles)
-    : IQueryHandler<GetRoleByIdQuery, RoleDto>
+internal sealed class GetRoleByIdQueryHandler(IRoleRepository roles, IPermissionRepository permissions)
+    : IQueryHandler<GetRoleByIdQuery, RoleDetailDto>
 {
-    public async Task<Result<RoleDto>> Handle(GetRoleByIdQuery query, CancellationToken ct)
+    public async Task<Result<RoleDetailDto>> Handle(GetRoleByIdQuery query, CancellationToken ct)
     {
         var role = await roles.GetByIdAsync(query.RoleId, ct);
 
-        return role is null
-            ? Error.NotFound("Role.NotFound", "Role not found.")
-            : new RoleDto(
-                role.Id,
-                role.Name,
-                role.Description,
-                role.IsSystem,
-                role.Scope.ToString(),
-                role.Permissions.Select(p => p.PermissionId).ToList());
+        if (role is null)
+        {
+            return Error.NotFound("Role.NotFound", "Role not found.");
+        }
+
+        var rolePermissions = await permissions.GetByRoleIdsAsync([role.Id], ct);
+
+        return new RoleDetailDto(
+            role.Id,
+            role.Name,
+            role.Description,
+            role.IsSystem,
+            role.Scope.ToString(),
+            rolePermissions.Select(p => new RolePermissionSummaryDto(p.Id, p.Code)).ToList());
     }
 }
