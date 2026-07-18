@@ -65,6 +65,18 @@ public static class ProblemDetailsAssertions
         return response.GetProblem().ShouldHaveErrorCode(code);
     }
 
+    // ---- IApiResponse-level convenience (for bodyless endpoints, e.g. 202/204 success) ----
+
+    public static ProblemDetailsModel ShouldHaveValidationError(this IApiResponse response, string property)
+    {
+        return response.GetProblem().ShouldHaveValidationError(property);
+    }
+
+    public static ProblemDetailsModel ShouldHaveErrorCode(this IApiResponse response, string code)
+    {
+        return response.GetProblem().ShouldHaveErrorCode(code);
+    }
+
     private static string Describe(IEnumerable<ValidationErrorModel> errors)
     {
         return string.Join(", ", errors.Select(e => $"{e.Property}:{e.Message}"));

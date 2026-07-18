@@ -152,6 +152,77 @@ public sealed class UsersRequestBuilder(IUsersClient users, ISqlClient sql, JwtT
     }
 
     /// <summary>
+    /// Builds a valid <see cref="RequestOtpModel"/> for <c>POST /auth/verify/request</c>. By default the
+    /// phone is a well-formed E.164 number that belongs to <b>no</b> registered user (drives the 404 case);
+    /// pass a registered user's phone for the success case, or an empty/invalid value for the 400 case.
+    /// Does NOT call the API.
+    /// </summary>
+    public RequestOtpModel BuildRequestOtpModel(string? phone = null)
+    {
+        return new RequestOtpModel(phone ?? Faker.E164Phone());
+    }
+
+    // Known OTP plaintext and its BCrypt hash (work factor 11), generated with BCrypt.Net-Next 4.0.3 —
+    // the exact hasher src uses (BCryptPasswordHasher). The API persists only the hash and confirms the
+    // plaintext via BCrypt.Verify, so seeding this pair lets a test confirm an OTP it "knows" (the real
+    // generated code is random and delivered out-of-band, so no endpoint exposes it).
+    public const string KnownOtpCode = "123456";
+    private const string KnownOtpCodeHash = "$2a$11$ona22C.7tBVZttAJbmIxHOwkSYx1WOLhYmppQUXwooSdKKA4MzXkq";
+
+    /// <summary>
+    /// Builds a valid <see cref="ConfirmOtpModel"/> for <c>POST /auth/verify/confirm</c>. Defaults to a
+    /// random E.164 phone and <see cref="KnownOtpCode"/>; pass a phone seeded via <see cref="IssueOtpAsync"/>
+    /// for the success case. Does NOT call the API.
+    /// </summary>
+    public ConfirmOtpModel BuildConfirmOtpModel(string? phone = null, string? code = null)
+    {
+        return new ConfirmOtpModel(phone ?? Faker.E164Phone(), code ?? KnownOtpCode);
+    }
+
+    /// <summary>
+    /// Full Arrange: seeds an active <c>PhoneVerify</c> OTP for <paramref name="phone"/> straight into
+    /// <c>[users].[VerificationCodes]</c> via the dev-only SQL endpoint, using the known plaintext
+    /// <see cref="KnownOtpCode"/> (bypassing the random, out-of-band generated code). Returns that plaintext
+    /// so the test can confirm it. Throws on non-success.
+    /// </summary>
+    public async Task<string> IssueOtpAsync(string phone)
+    {
+        var safePhone = phone.Replace("'", "''");
+        var query =
+            "INSERT INTO [users].[VerificationCodes] " +
+            "(Id, UserId, Phone, Purpose, CodeHash, ExpiresAtUtc, ConsumedAtUtc, Attempts) VALUES " +
+            $"(NEWID(), NULL, '{safePhone}', 'PhoneVerify', '{KnownOtpCodeHash}', " +
+            "TODATETIMEOFFSET(DATEADD(minute, 30, SYSUTCDATETIME()), 0), NULL, 0)";
+
+        var response = await _sql.Execute(new SqlRequestModel(query));
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: dev SQL issue-OTP returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+
+        return KnownOtpCode;
+    }
+
+    /// <summary>
+    /// Reads a user back via <c>GET /users/{id}</c> and returns the persisted model — used to assert an
+    /// endpoint's side effect (e.g. Status flipped to Active). Throws on non-success.
+    /// </summary>
+    public async Task<UserModel> GetUserAsync(Guid id)
+    {
+        var response = await _users.GetById(id);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Read-back failed: GET user {id} returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+
+        return response.Content!;
+    }
+
+    /// <summary>
     /// Builds a valid <see cref="LoginModel"/> using an existing user's credentials.
     /// Any field is overridable: <c>model with { Phone = "+1..." }</c>.
     /// </summary>

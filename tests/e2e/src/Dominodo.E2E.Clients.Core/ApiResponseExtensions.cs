@@ -21,4 +21,19 @@ public static class ApiResponseExtensions
 
         return JsonSerializer.Deserialize<ProblemDetailsModel>(content, E2EJsonOptions.Default);
     }
+
+    /// <summary>
+    /// Same as <see cref="GetProblem{T}"/> but for a bodyless <see cref="IApiResponse"/> (endpoints whose
+    /// success path returns no content, e.g. <c>202 Accepted</c> / <c>204 No Content</c>).
+    /// </summary>
+    public static ProblemDetailsModel? GetProblem(this IApiResponse response)
+    {
+        var content = response.Error?.Content;
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<ProblemDetailsModel>(content, E2EJsonOptions.Default);
+    }
 }
