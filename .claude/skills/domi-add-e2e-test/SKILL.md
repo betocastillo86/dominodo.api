@@ -9,6 +9,13 @@ The E2E suite (`tests/e2e/Dominodo.E2E.sln`) tests the API **as a black box over
 code with `src/`**. Models and routes are **written by hand** so that if the API drifts, the test
 **breaks loudly** — that break is the product. This skill is the operational recipe.
 
+## Rule 0 — NEVER touch `src/`
+
+Write only under `tests/e2e/`. Never add or edit API code to help a test — no endpoints, handlers, or
+behavior changes. State no production endpoint can create is arranged via the dev-only SQL endpoint
+(`POST /api/v1/dev/sql`, client `ISqlClient`, 404 outside Development); keep the SQL in a RequestBuilder
+(see `UsersRequestBuilder.ForceActivateUserAsync`). Can't reach the case even so? Stop and say so.
+
 ## How the user asks
 
 An endpoint + a list of `status → scenario` cases (e.g. *"get all roles: 401, 403 sin permiso manage
@@ -72,13 +79,17 @@ Task<ApiResponse<PagedResultModel<RoleModel>>> GetRoles(
 
 ## Step 5 — RequestBuilder (the Arrange)
 
-`<Module>RequestBuilder : BaseRequestBuilder`, injected the module's client. Two kinds of method:
-- `Build<Noun>Model(...)` — valid fake data by default (use `Faker.E164Phone()`, `Faker.StrongPassword()`,
-  and `DominodoFakerExtensions`), every field overridable. **Does NOT call the API.**
-- `<Setup>Async(...)` — a full Arrange that **calls the API** to create prerequisites, and **throws on
-  non-success** (a broken Arrange must abort the test, not produce a misleading Assert).
+`<Module>RequestBuilder : BaseRequestBuilder`, injected the module's client. Per entity, **three members**:
+- `Build<Noun>Model(...params)` — valid fake data (`Faker.E164Phone()`, `Faker.StrongPassword()`,
+  `DominodoFakerExtensions`), every field overridable. **Does NOT call the API.**
+- `<Create><Noun>Async(...params)` — parameter overload; calls `Build<Noun>Model(...params)` then delegates
+  to the model overload. Lets a test override one field, e.g. `RegisterUserAsync(password: pwd)`.
+- `<Create><Noun>Async(<Noun>Model model)` — the API call: creates, **reads back via `GET /...{id}`, returns
+  the persisted model** (`UserModel`, …), and **throws on any non-success step** (create or read-back).
 
-Register the builder in `ClientsServiceRegister.Add<Module>Client()`.
+`model` is **required** (no default) so the no-arg call resolves to the parameter overload. Composite
+helpers (e.g. `CreateUserAndAuthenticateAsync`) build on the model overloads. Register the builder in
+`ClientsServiceRegister.Add<Module>Client()`.
 
 ## Step 6 — The test class
 
@@ -156,9 +167,13 @@ test per rule.
 
 ## Non-negotiables (checklist)
 
+- [ ] **Zero changes under `src/`** (Rule 0) — arrange via `ISqlClient`, never new API code.
 - [ ] Models replicated **by hand**, not referenced/copied from `src/` or generated from OpenAPI.
 - [ ] Client used **only** inside `Act`; all Arrange via the builder.
-- [ ] Builder Arrange helpers that hit the API **throw on non-success**.
+- [ ] Each entity has the **three builder members**: `Build<Noun>Model(...)`, `<Create>Async(...params)`
+      (delegates to the model overload), and `<Create>Async(model)` (creates, reads back, returns the model).
+- [ ] Create helpers **read the entity back via GET and return the persisted model**, and **throw on
+      non-success** at every step (create *and* read-back).
 - [ ] Test names `_<status>_<scenario>`; class `<Verb><Noun>Tests`.
 - [ ] The `400` test(s) cover **every** rule in the request's validator (ideally one test breaking all
       fields at once, not just the first field). Cross-check against `<Command>Validator.cs` — see Step 6a.

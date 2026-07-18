@@ -25,9 +25,14 @@ internal sealed class LoginCommandHandler(
     {
         var user = await users.GetByPhoneAsync(command.Phone, ct);
 
-        if (user is null || user.Status != UserStatus.Active)
+        if (user is null)
         {
             return Error.Unauthorized("Auth.InvalidCredentials", "Phone or password is incorrect.");
+        }
+
+        if (user.Status != UserStatus.Active)
+        {
+            return Error.Forbidden("Auth.AccountNotActive", "Account is not active.");
         }
 
         if (user.PasswordHash is null || !passwordHasher.Verify(command.Password, user.PasswordHash))

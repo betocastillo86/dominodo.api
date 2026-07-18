@@ -44,6 +44,20 @@ public interface IUsersClient
         [Body] UpdateRoleModel model,
         [Authorize("Bearer")] string? token = null);
 
+    // OTP verification — both anonymous, available on any registered phone.
+    [Post("/api/v1/auth/verify/request")]
+    Task<IApiResponse> RequestOtp(
+        [Body] RequestOtpModel model);
+
+    [Post("/api/v1/auth/verify/confirm")]
+    Task<IApiResponse> ConfirmOtp(
+        [Body] ConfirmOtpModel model);
+
+    // Anonymous — no token needed. Returns 400 on validation failure, 401 on invalid credentials.
+    [Post("/api/v1/auth/login")]
+    Task<ApiResponse<AuthTokensModel>> Login(
+        [Body] LoginModel model);
+
     // Guarded by [HasPermission(Permissions.RolesManage)] on PermissionsController.
     [Get("/api/v1/permissions")]
     Task<ApiResponse<IReadOnlyList<PermissionModel>>> GetPermissions(

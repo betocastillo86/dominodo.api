@@ -1,4 +1,5 @@
 using Dominodo.E2E.Clients.Common;
+using Dominodo.E2E.Clients.Dev;
 using Dominodo.E2E.Clients.Modules.Users.Models;
 using Dominodo.E2E.Core;
 using Dominodo.E2E.Core.Faker;
@@ -11,9 +12,11 @@ namespace Dominodo.E2E.Clients.Modules.Users;
 /// <c>Arrange</c> use cases. Per README §8, any Arrange helper that calls the API throws on
 /// non-success — a broken Arrange aborts the test rather than producing a misleading Assert.
 /// </summary>
-public sealed class UsersRequestBuilder(IUsersClient users, JwtTokenFactory jwtTokenFactory) : BaseRequestBuilder
+public sealed class UsersRequestBuilder(IUsersClient users, ISqlClient sql, JwtTokenFactory jwtTokenFactory)
+    : BaseRequestBuilder
 {
     private readonly IUsersClient _users = users;
+    private readonly ISqlClient _sql = sql;
     private readonly JwtTokenFactory _jwtTokenFactory = jwtTokenFactory;
 
     /// <summary>
@@ -38,12 +41,29 @@ public sealed class UsersRequestBuilder(IUsersClient users, JwtTokenFactory jwtT
     }
 
     /// <summary>
-    /// Full Arrange: registers a user and returns the created id. Throws on non-success.
+    /// Full Arrange (parameter overload): builds a valid <see cref="NewUserModel"/> from the given
+    /// overrides and registers it. Convenience over <see cref="BuildNewUserModel"/> +
+    /// <see cref="RegisterUserAsync(NewUserModel, bool)"/> when you only need to tweak a field or two.
     /// </summary>
-    public async Task<Guid> RegisterUserAsync(NewUserModel? model = null)
+    public Task<UserModel> RegisterUserAsync(
+        string? phone = null,
+        string? email = null,
+        string? firstName = null,
+        string? lastName = null,
+        string? password = null,
+        bool activate = true)
     {
-        model ??= BuildNewUserModel();
+        return RegisterUserAsync(BuildNewUserModel(phone, email, firstName, lastName, password), activate);
+    }
 
+    /// <summary>
+    /// Full Arrange: registers the given user, reads it back via <c>GET /users/{id}</c>, and returns
+    /// the persisted <see cref="UserModel"/>. When <paramref name="activate"/> is <c>true</c> (default),
+    /// also activates the user via the dev-only SQL endpoint so it is ready to log in.
+    /// Throws on any non-success step so a broken Arrange aborts the test immediately.
+    /// </summary>
+    public async Task<UserModel> RegisterUserAsync(NewUserModel model, bool activate = true)
+    {
         var response = await _users.Register(model);
         if (!response.IsSuccessStatusCode)
         {
@@ -52,7 +72,21 @@ public sealed class UsersRequestBuilder(IUsersClient users, JwtTokenFactory jwtT
                 $"Body: {response.Error?.Content}");
         }
 
-        return response.Content!.Id;
+        if (activate)
+        {
+            await ForceActivateUserAsync(model.Phone);
+        }
+
+        var id = response.Content!.Id;
+        var getResponse = await _users.GetById(id);
+        if (!getResponse.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: reading back user {id} returned {(int)getResponse.StatusCode}. " +
+                $"Body: {getResponse.Error?.Content}");
+        }
+
+        return getResponse.Content!;
     }
 
     /// <summary>
@@ -75,12 +109,26 @@ public sealed class UsersRequestBuilder(IUsersClient users, JwtTokenFactory jwtT
     }
 
     /// <summary>
-    /// Full Arrange: creates a role using the seeded <c>roles.manage</c> token and returns the
-    /// created integer id. Throws on non-success so a broken Arrange aborts the test immediately.
+    /// Full Arrange (parameter overload): builds a valid <see cref="NewRoleModel"/> from the given
+    /// overrides and creates it. Convenience over <see cref="BuildNewRoleModel"/> +
+    /// <see cref="CreateRoleAsync(NewRoleModel)"/> when you only need to tweak a field or two.
     /// </summary>
-    public async Task<int> CreateRoleAsync(NewRoleModel? model = null)
+    public Task<RoleDetailModel> CreateRoleAsync(
+        string? name = null,
+        string? description = null,
+        string? scope = null,
+        IReadOnlyList<int>? permissionIds = null)
     {
-        model ??= BuildNewRoleModel();
+        return CreateRoleAsync(BuildNewRoleModel(name, description, scope, permissionIds));
+    }
+
+    /// <summary>
+    /// Full Arrange: creates the given role using the seeded <c>roles.manage</c> token, reads it back
+    /// via <c>GET /roles/{id}</c> (same token), and returns the persisted <see cref="RoleDetailModel"/>.
+    /// Throws on any non-success step so a broken Arrange aborts the test immediately.
+    /// </summary>
+    public async Task<RoleDetailModel> CreateRoleAsync(NewRoleModel model)
+    {
         var token = _jwtTokenFactory.GenerateToken(DominodoConstants.Permission.RolesManage);
 
         var response = await _users.CreateRole(model, token);
@@ -91,7 +139,78 @@ public sealed class UsersRequestBuilder(IUsersClient users, JwtTokenFactory jwtT
                 $"Body: {response.Error?.Content}");
         }
 
-        return response.Content!.Id;
+        var id = response.Content!.Id;
+        var getResponse = await _users.GetRoleById(id, token);
+        if (!getResponse.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: reading back role {id} returned {(int)getResponse.StatusCode}. " +
+                $"Body: {getResponse.Error?.Content}");
+        }
+
+        return getResponse.Content!;
+    }
+
+    /// <summary>
+    /// Builds a valid <see cref="LoginModel"/> using an existing user's credentials.
+    /// Any field is overridable: <c>model with { Phone = "+1..." }</c>.
+    /// </summary>
+    public LoginModel BuildLoginModel(string? phone = null, string? password = null)
+    {
+        return new LoginModel
+        {
+            Phone = phone ?? Faker.E164Phone(),
+            Password = password ?? Faker.StrongPassword(),
+        };
+    }
+
+    /// <summary>
+    /// Full Arrange: activates a user by phone by writing straight to the DB via the dev-only SQL
+    /// endpoint (bypassing OTP). Throws on non-success (the endpoint returns 404 outside Development).
+    /// Prefer this over adding "dev" endpoints to the API — the SQL escape hatch keeps test-only
+    /// concerns out of <c>src/</c>.
+    /// </summary>
+    public async Task ForceActivateUserAsync(string phone)
+    {
+        // Status is persisted as a string (see UserConfiguration). Phones are E.164 fake data, but
+        // double any single quote defensively so the inline literal is always well-formed.
+        var safePhone = phone.Replace("'", "''");
+        var query = $"UPDATE [users].[Users] SET [Status] = 'Active' WHERE [Phone] = '{safePhone}'";
+
+        var response = await _sql.Execute(new SqlRequestModel(query));
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: dev SQL activate returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+    }
+
+    /// <summary>
+    /// Full Arrange: registers a brand-new user, activates it via the dev-only SQL endpoint
+    /// (bypassing OTP — only available in Development), and logs in.
+    /// Returns the issued tokens and the model so callers have the phone + password for follow-up calls.
+    /// Throws on any non-success step.
+    /// </summary>
+    public async Task<(AuthTokensModel Tokens, NewUserModel User)> CreateUserAndAuthenticateAsync(
+        string? phone = null,
+        string? email = null,
+        string? password = null)
+    {
+        var newUser = BuildNewUserModel(phone: phone, email: email, password: password);
+        await RegisterUserAsync(newUser, activate: true);
+
+        var loginModel = new LoginModel { Phone = newUser.Phone, Password = newUser.Password };
+        var response = await _users.Login(loginModel);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: login returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+
+        return (response.Content!, newUser);
     }
 
     /// <summary>

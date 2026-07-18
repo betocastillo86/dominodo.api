@@ -47,7 +47,7 @@ public sealed class UpdateRoleTests : BaseUsersTests
     {
         // Arrange — break every UpdateRoleCommandValidator rule at once:
         // Name NotEmpty, Description MaximumLength(300), PermissionIds NotNull.
-        var id = await UsersRequestBuilder.CreateRoleAsync();
+        var id = (await UsersRequestBuilder.CreateRoleAsync()).Id;
         var model = UsersRequestBuilder.BuildUpdateRoleModel() with
         {
             Name = "",
@@ -70,7 +70,7 @@ public sealed class UpdateRoleTests : BaseUsersTests
     public async Task _204_UpdatesRole_AndVerifiesByFetching()
     {
         // Arrange — create a fresh role, then build an update with new name and description.
-        var id = await UsersRequestBuilder.CreateRoleAsync();
+        var id = (await UsersRequestBuilder.CreateRoleAsync()).Id;
         var updateModel = UsersRequestBuilder.BuildUpdateRoleModel(
             description: "e2e updated description");
         var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.RolesManage);

@@ -55,7 +55,7 @@ public sealed class GetRoleByIdTests : BaseUsersTests
     {
         // Arrange — create a fresh role so the test is self-contained.
         var model = UsersRequestBuilder.BuildNewRoleModel();
-        var id = await UsersRequestBuilder.CreateRoleAsync(model);
+        var id = (await UsersRequestBuilder.CreateRoleAsync(model)).Id;
         var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.RolesManage);
 
         // Act
