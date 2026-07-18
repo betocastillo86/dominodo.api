@@ -138,6 +138,25 @@ that happens to carry **every** permission, so it resolves to a superset that sa
 special-casing its name in code. Renaming or deleting the role changes only which permissions resolve;
 it can never silently bypass a check, because no check reads a role name.
 
+## Testing seams — IntegrationTests seeding
+
+Because authorization resolves the caller's permissions **from the DB by the token's `sub`** (never a
+role claim), a test can only exercise a `[HasPermission(code)]` endpoint if the DB actually holds a
+`User` → `PlatformRoleAssignment` → `Role` → that permission. To make this turnkey, running the API
+under the **`IntegrationTests`** environment seeds — at startup, at runtime, never via EF `HasData` —
+one **Platform-scope** `Role` + `User` + `PlatformRoleAssignment` per catalog permission, with **fixed
+deterministic ids**:
+
+- `RoleId = 1000 + permissionId`; `UserId = 00000000-0000-0000-0000-0000000010NN` (`NN` = permission id);
+  role name is the PascalCase of the code (`roles.manage` → `RolesManage`).
+- Source of truth: `Dominodo.Users.Persistence/Seed/IntegrationTestSeedData.cs`, invoked by
+  `IServiceProvider.SeedIntegrationTestDataAsync()` from `Program.cs` (idempotent). The E2E project
+  mirrors the ids in `DominodoConstants.IntegrationSeed` (black-box — cannot reference Persistence).
+- Only **Platform** roles are seeded (the only assignment path that resolves permissions today). Tenant
+  (Membership) scenarios are set up from the E2E tests once that slice lands.
+- This environment shares the Development database and uses the `dominodo-tests` JWT settings; the E2E
+  token minter must match them.
+
 ## Relationship to multitenancy (revises doc 09)
 
 [09 — Multitenancy](./09-multitenancy.md) originally described validating a JWT `tenant_id` claim against

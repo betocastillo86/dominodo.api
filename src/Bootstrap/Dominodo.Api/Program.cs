@@ -85,9 +85,17 @@ var app = builder.Build();
 app.UseSharedInfrastructure();
 
 // Dev convenience: ensure the local DB container is up + migrated before serving (idempotent, F5-friendly).
-if (app.Environment.IsDevelopment())
+// Also runs for IntegrationTests, which shares the local database and seeds test fixtures below.
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("IntegrationTests"))
 {
     await app.EnsureLocalDatabaseAsync();
+}
+
+// IntegrationTests-only: seed a Platform role + user + assignment per permission (fixed ids) so tests can
+// authenticate as a user carrying exactly one permission. Runtime-gated (never baked into migrations).
+if (app.Environment.IsEnvironment("IntegrationTests"))
+{
+    await app.Services.SeedIntegrationTestDataAsync();
 }
 
 // Swagger is exposed only outside production (requirement #1). Never register it unconditionally.

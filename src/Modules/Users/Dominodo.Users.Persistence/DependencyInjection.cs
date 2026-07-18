@@ -2,6 +2,7 @@ using Dominodo.Shared.Kernel;
 using Dominodo.Shared.Infrastructure.Persistence;
 using Dominodo.Users.Domain.Ports;
 using Dominodo.Users.Persistence.Repositories;
+using Dominodo.Users.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Wolverine;
@@ -59,5 +60,36 @@ public static class DependencyInjection
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
         await db.Database.MigrateAsync(ct);
+    }
+
+    // IntegrationTests-only: seeds a Platform role + user + assignment per permission (fixed ids) so tests can
+    // authenticate as a user carrying exactly one permission. Public entry point so the host can invoke it
+    // without UsersDbContext leaving the assembly. Idempotent: each row is added only if its id is absent.
+    // Writes directly with SaveChangesAsync (not the Wolverine unit of work) — this is reference data, so no
+    // outbox/domain-event dispatch should occur.
+    public static async Task SeedIntegrationTestDataAsync(this IServiceProvider services, CancellationToken ct = default)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
+
+        foreach (var fixture in IntegrationTestSeedData.Fixtures)
+        {
+            if (!await db.Roles.AnyAsync(r => r.Id == fixture.RoleId, ct))
+            {
+                db.Roles.Add(IntegrationTestSeedData.BuildRole(fixture));
+            }
+
+            if (!await db.Users.AnyAsync(u => u.Id == fixture.UserId, ct))
+            {
+                db.Users.Add(IntegrationTestSeedData.BuildUser(fixture));
+            }
+
+            if (!await db.PlatformRoleAssignments.AnyAsync(a => a.Id == fixture.AssignmentId, ct))
+            {
+                db.PlatformRoleAssignments.Add(IntegrationTestSeedData.BuildAssignment(fixture));
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
     }
 }

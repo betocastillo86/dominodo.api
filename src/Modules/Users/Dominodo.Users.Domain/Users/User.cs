@@ -71,6 +71,32 @@ public sealed class User : AggregateRoot
         return user;
     }
 
+    // Deterministic, event-free factory for seed/test fixtures only — mirrors PlatformRoleAssignment.AssignWithId.
+    // Takes a fixed id, starts Active (so it can authenticate immediately), and raises NO domain event.
+    public static User CreateSeed(
+        Guid id,
+        PhoneNumber phone,
+        Email? email,
+        string firstName,
+        string lastName,
+        string? passwordHash,
+        string preferredLanguage = "es")
+    {
+        var user = new User(
+            id,
+            phone,
+            email,
+            firstName,
+            lastName,
+            passwordHash,
+            string.IsNullOrWhiteSpace(preferredLanguage) ? "es" : preferredLanguage)
+        {
+            Status = UserStatus.Active,
+        };
+
+        return user;
+    }
+
     public Result RequestPhoneVerification(string code, bool hasWhatsApp)
     {
         if (PhoneVerifiedAtUtc is not null)
