@@ -4,7 +4,7 @@ using Dominodo.E2E.Tests.Shared.Assertions;
 using NUnit.Framework;
 using Shouldly;
 
-namespace Dominodo.E2E.Tests.Users;
+namespace Dominodo.E2E.Tests.Users.Users;
 
 [TestFixture]
 public sealed class RegisterUserTests : BaseUsersTests

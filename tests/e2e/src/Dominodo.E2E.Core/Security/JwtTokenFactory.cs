@@ -45,9 +45,14 @@ public sealed class JwtTokenFactory(JwtSettings settings)
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    /// <summary>Mints a SuperAdmin token (bypasses the tenant check on authenticated endpoints).</summary>
-    public string CreateSuperAdminToken(Guid? userId = null)
+    /// <summary>
+    /// Mints a token for the seeded user that carries <paramref name="permission"/>.
+    /// The server resolves the permission set from the DB by the token sub, so the request
+    /// is authorized if and only if the endpoint requires exactly that permission.
+    /// </summary>
+    public string GenerateToken(string permission)
     {
-        return CreateUserToken(userId ?? Guid.NewGuid(), DominodoConstants.Roles.SuperAdmin);
+        var userId = DominodoConstants.IntegrationSeed.UserIdFor(permission);
+        return CreateUserToken(userId);
     }
 }

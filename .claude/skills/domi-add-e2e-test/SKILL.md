@@ -31,13 +31,19 @@ and its Application/Contracts DTOs. Extract, per endpoint:
 > If a case isn't reachable yet (a permission not wired, or tenancy — see README §7), say so and adjust
 > rather than writing a test that can't pass.
 
-## Step 2 — Locate / create the module test project
+## Step 2 — Locate / create the module test project and controller subfolder
 
 One test project per module: `tests/e2e/tests/Dominodo.E2E.Tests.<Module>`. Users exists as the
 **exemplar — copy its shape**. The client, models and builder live in
 `tests/e2e/src/Dominodo.E2E.Clients/Modules/<Module>/`. If the module project doesn't exist yet, mirror
 `Dominodo.E2E.Tests.Users` (a one-line `SetUpFixture : E2ESetupFixtureBase`, `appsettings.json`, a
 `Base<Module>Tests`) and register its client in `ClientsServiceRegister` + `E2ESetupFixtureBase`.
+
+**Within the project, tests are grouped by controller in subfolders.** The subfolder name matches the
+controller's primary resource: `Users/`, `Roles/`, `Permissions/`, etc. Cross-resource controllers
+(e.g. `RolePermissions`, which assigns permissions to a role) belong to the primary resource's folder
+(`Roles/`). The subfolder becomes the last segment of the namespace:
+`Dominodo.E2E.Tests.Users.Roles`, `Dominodo.E2E.Tests.Users.Users`, etc.
 
 ## Step 3 — Models (hand-written, `Model` suffix)
 
@@ -84,6 +90,9 @@ Auth in Act: `JwtTokenFactory.CreateSuperAdminToken()` for an authorized call; a
 (null) for 401.
 
 ```csharp
+// File: tests/e2e/tests/Dominodo.E2E.Tests.Users/Roles/GetRolesTests.cs
+namespace Dominodo.E2E.Tests.Users.Roles;   // subfolder = last namespace segment
+
 [TestFixture]
 public sealed class GetRolesTests : BaseUsersTests
 {

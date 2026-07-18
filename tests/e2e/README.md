@@ -104,6 +104,10 @@ tests/e2e/                                  # E2E solution root — NOT included
       Assertions/                           #   ProblemDetailsAssertions (ShouldHaveValidationError, …)
       Seeding/                              #   ISeeder seam (no DB seed yet — super-admin via minted JWT)
     Dominodo.E2E.Tests.Users/               # 1 project per module (SetUpFixture is per-assembly)
+      Users/                                #   tests for UsersController (RegisterUser, GetUserById, …)
+      Roles/                                #   tests for RolesController (GetRoles, …)
+                                            #   RolePermissions tests also live here (same controller group)
+      Permissions/                          #   tests for PermissionsController (when added)
     # Dominodo.E2E.Tests.Admin/            # added once Admin ships controllers
     # Dominodo.E2E.Tests.Tenants/          # NOT YET — the Tenants module does not exist
     # Dominodo.E2E.Tests.Operations/       # NOT YET — the Operations module does not exist
@@ -287,6 +291,11 @@ Exactly the kind of bug a coupled test would mask. Cover the doc-09 table explic
   test name) in `[SetUp]` and clears it in `[TearDown]`.
 - Each module has a `Base<Module>Tests` that resolves its builders and clients from the `ServiceProvider`
   in `[OneTimeSetUp]`, and sets the `AmbientTenantContext` to the default tenant (or creates its own).
+- **Folder-per-controller inside the test project.** Within `Dominodo.E2E.Tests.<Module>/`, test classes
+  are grouped by controller in a subfolder that matches the controller's resource name: `Users/`,
+  `Roles/`, `Permissions/`, etc. Cross-resource controllers (e.g. `RolePermissions`) belong to the
+  subfolder of the primary resource they extend (`Roles/`). The subfolder name becomes the last segment of
+  the namespace: `Dominodo.E2E.Tests.Users.Roles`, `Dominodo.E2E.Tests.Users.Users`, etc.
 - **Test structure:** `Arrange` with builders → `Act` = **one** call to the Refit client under test →
   `Assert` on `StatusCode`, `Content`, and/or the `ProblemDetailsModel`.
 
@@ -433,6 +442,9 @@ The E2E suite **follows** the API, on purpose and by intent. The flow:
 - **Clients:** `I<Module>Client` (`IOperationsClient`).
 - **Builders:** `<Module>RequestBuilder`.
 - **Models:** `New<Noun>Model`, `Update<Noun>Model`, `<Noun>Model`, `<Noun>FilterModel`.
+- **Folder-per-controller:** within a test project, classes are grouped by controller resource in a
+  subfolder (`Users/`, `Roles/`, `Permissions/`). A cross-resource controller (e.g. `RolePermissions`)
+  goes in the primary resource's folder (`Roles/`). The subfolder becomes the last namespace segment.
 - **Test classes:** `<Verb><Noun>Tests` (`CreateRequestTests`), one per use case/endpoint.
 - **Tests:** `_<StatusCode>_<Scenario>` (`_403_WhenTenantMismatch`) — Pollaya-style, readable in the runner.
 

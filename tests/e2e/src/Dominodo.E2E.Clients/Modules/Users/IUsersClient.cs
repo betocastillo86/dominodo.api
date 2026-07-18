@@ -20,9 +20,11 @@ public interface IUsersClient
         Guid id,
         [Authorize("Bearer")] string? token = null);
 
-    // Authenticated endpoint used only for the JWT-factory smoke ([Authorize] on RolesController).
-    // Full roles/permissions coverage is a later slice.
+    // Guarded by [HasPermission(Permissions.RolesManage)] on RolesController: anonymous ⇒ 401,
+    // authenticated without roles.manage ⇒ 403, SuperAdmin (or a user with the permission) ⇒ 200.
     [Get("/api/v1/roles")]
-    Task<IApiResponse> GetRoles(
+    Task<ApiResponse<PagedResultModel<RoleModel>>> GetRoles(
+        [Query] int page = 1,
+        [Query] int pageSize = 20,
         [Authorize("Bearer")] string? token = null);
 }
