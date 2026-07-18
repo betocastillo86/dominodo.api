@@ -93,4 +93,21 @@ public sealed class UsersRequestBuilder(IUsersClient users, JwtTokenFactory jwtT
 
         return response.Content!.Id;
     }
+
+    /// <summary>
+    /// Builds a valid <see cref="UpdateRoleModel"/> with a unique name.
+    /// Any field is overridable: <c>model with { Name = "Custom" }</c>.
+    /// </summary>
+    public UpdateRoleModel BuildUpdateRoleModel(
+        string? name = null,
+        string? description = null,
+        IReadOnlyList<int>? permissionIds = null)
+    {
+        return new UpdateRoleModel
+        {
+            Name = name ?? $"e2e-{Guid.NewGuid():N}",
+            Description = description,
+            PermissionIds = permissionIds ?? [1], // "users.manage"
+        };
+    }
 }

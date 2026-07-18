@@ -37,4 +37,15 @@ public interface IUsersClient
     Task<ApiResponse<CreatedIntModel>> CreateRole(
         [Body] NewRoleModel model,
         [Authorize("Bearer")] string? token = null);
+
+    [Put("/api/v1/roles/{id}")]
+    Task<ApiResponse<object>> UpdateRole(
+        int id,
+        [Body] UpdateRoleModel model,
+        [Authorize("Bearer")] string? token = null);
+
+    // Guarded by [HasPermission(Permissions.RolesManage)] on PermissionsController.
+    [Get("/api/v1/permissions")]
+    Task<ApiResponse<IReadOnlyList<PermissionModel>>> GetPermissions(
+        [Authorize("Bearer")] string? token = null);
 }
