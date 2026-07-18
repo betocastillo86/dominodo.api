@@ -44,7 +44,7 @@ public sealed class LoginUserTests : BaseUsersTests
     {
         // Arrange — register a user but intentionally skip activation (stays PendingVerification)
         var newUser = UsersRequestBuilder.BuildNewUserModel();
-        await UsersRequestBuilder.RegisterUserAsync(newUser);
+        await UsersRequestBuilder.RegisterUserAsync(newUser, activate: false);
         var model = new LoginModel { Phone = newUser.Phone, Password = newUser.Password };
 
         // Act

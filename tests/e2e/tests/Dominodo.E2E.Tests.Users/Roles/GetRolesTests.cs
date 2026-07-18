@@ -28,9 +28,8 @@ public sealed class GetRolesTests : BaseUsersTests
     [Test]
     public async Task _403_WhenUserLacksRolesManage()
     {
-        // Arrange — a valid bearer for a user with no Platform role assignment, so the server
-        // resolves an empty permission set (no roles.manage).
-        var token = JwtTokenFactory.CreateUserToken(Guid.NewGuid());
+        // Arrange — bearer for the seeded "Rol Public" user: exists and has a role, but zero permissions.
+        var token = JwtTokenFactory.GeneratePublicToken();
 
         // Act
         var response = await UsersClient.GetRoles(token: token);

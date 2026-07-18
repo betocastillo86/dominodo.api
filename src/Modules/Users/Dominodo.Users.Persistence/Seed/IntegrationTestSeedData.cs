@@ -70,6 +70,40 @@ public static class IntegrationTestSeedData
     public static PlatformRoleAssignment BuildAssignment(Fixture fixture) =>
         PlatformRoleAssignment.AssignWithId(fixture.AssignmentId, fixture.UserId, fixture.RoleId);
 
+    // "Rol Public": a Platform-scope role carrying ZERO permissions, plus a user assigned to it, so a test
+    // can mint a token for a permission-less user and assert a [HasPermission(code)] endpoint returns 403.
+    // Fixed ids chosen clear of every other scheme (system roles 1-5, per-permission roles 1001+, their
+    // users ...10NN / assignments ...20NN). Uses NN=00 slots, which the per-permission scheme never emits.
+    public const int PublicRoleId = 900;
+    public const string PublicRoleName = "Rol Public";
+    public static readonly Guid PublicUserId = Guid.Parse("00000000-0000-0000-0000-000000001000");
+    public static readonly Guid PublicAssignmentId = Guid.Parse("00000000-0000-0000-0000-000000002000");
+
+    public static Role BuildPublicRole() =>
+        new(
+            PublicRoleId,
+            PublicRoleName,
+            "Integration test role with no permissions.",
+            isSystem: false,
+            RoleScope.Platform);
+
+    public static User BuildPublicUser()
+    {
+        var phone = PhoneNumber.Create("+9900000900").Value;
+        var email = Email.Create("public@integration.test").Value;
+
+        return User.CreateSeed(
+            PublicUserId,
+            phone,
+            email,
+            firstName: "Integration",
+            lastName: "Public",
+            passwordHash: UsersSeedData.SuperAdminPasswordHash);
+    }
+
+    public static PlatformRoleAssignment BuildPublicAssignment() =>
+        PlatformRoleAssignment.AssignWithId(PublicAssignmentId, PublicUserId, PublicRoleId);
+
     // "roles.manage" -> "RolesManage", "deliveries.register" -> "DeliveriesRegister".
     private static string ToPascalCase(string permissionCode)
     {

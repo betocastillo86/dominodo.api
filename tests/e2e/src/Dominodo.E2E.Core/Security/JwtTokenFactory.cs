@@ -55,4 +55,12 @@ public sealed class JwtTokenFactory(JwtSettings settings)
         var userId = DominodoConstants.IntegrationSeed.UserIdFor(permission);
         return CreateUserToken(userId);
     }
+
+    /// <summary>
+    /// Mints a token for the seeded "Rol Public" user — a real user assigned to a Platform role that
+    /// carries zero permissions. Use to assert a <c>[HasPermission(code)]</c> endpoint returns 403 for a
+    /// user that exists but lacks the permission (distinct from a token for an unknown user id).
+    /// </summary>
+    public string GeneratePublicToken() =>
+        CreateUserToken(DominodoConstants.IntegrationSeed.PublicUserId);
 }

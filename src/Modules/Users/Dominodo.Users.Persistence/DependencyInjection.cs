@@ -90,6 +90,22 @@ public static class DependencyInjection
             }
         }
 
+        // "Rol Public": a permission-less role + user, so tests can assert 403 for a user with no permissions.
+        if (!await db.Roles.AnyAsync(r => r.Id == IntegrationTestSeedData.PublicRoleId, ct))
+        {
+            db.Roles.Add(IntegrationTestSeedData.BuildPublicRole());
+        }
+
+        if (!await db.Users.AnyAsync(u => u.Id == IntegrationTestSeedData.PublicUserId, ct))
+        {
+            db.Users.Add(IntegrationTestSeedData.BuildPublicUser());
+        }
+
+        if (!await db.PlatformRoleAssignments.AnyAsync(a => a.Id == IntegrationTestSeedData.PublicAssignmentId, ct))
+        {
+            db.PlatformRoleAssignments.Add(IntegrationTestSeedData.BuildPublicAssignment());
+        }
+
         await db.SaveChangesAsync(ct);
     }
 }

@@ -68,5 +68,11 @@ public static class DominodoConstants
             _userIdByPermission.TryGetValue(permission, out var id)
                 ? id
                 : throw new ArgumentException($"No seeded user for permission '{permission}'.", nameof(permission));
+
+        // "Rol Public": a seeded user assigned to a Platform role carrying ZERO permissions. Mint a token
+        // via JwtTokenFactory.GeneratePublicToken() to assert a [HasPermission(code)] endpoint returns 403
+        // for a real, existing user that simply lacks the permission (distinct from an unknown-user token).
+        // Must match IntegrationTestSeedData.PublicUserId (00000000-0000-0000-0000-000000001000).
+        public static readonly Guid PublicUserId = Guid.Parse("00000000-0000-0000-0000-000000001000");
     }
 }

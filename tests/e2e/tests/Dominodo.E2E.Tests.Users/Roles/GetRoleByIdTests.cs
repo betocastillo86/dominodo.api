@@ -26,8 +26,8 @@ public sealed class GetRoleByIdTests : BaseUsersTests
     [Test]
     public async Task _403_WhenUserLacksRolesManage()
     {
-        // Arrange — valid bearer for an unknown user; server resolves an empty permission set.
-        var token = JwtTokenFactory.CreateUserToken(Guid.NewGuid());
+        // Arrange — bearer for the seeded "Rol Public" user: exists and has a role, but zero permissions.
+        var token = JwtTokenFactory.GeneratePublicToken();
 
         // Act
         var response = await UsersClient.GetRoleById(1, token);

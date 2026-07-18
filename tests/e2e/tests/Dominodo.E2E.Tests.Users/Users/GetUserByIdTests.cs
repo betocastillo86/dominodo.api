@@ -13,7 +13,7 @@ public sealed class GetUserByIdTests : BaseUsersTests
     {
         // Arrange
         var model = UsersRequestBuilder.BuildNewUserModel();
-        var id = (await UsersRequestBuilder.RegisterUserAsync(model)).Id;
+        var id = (await UsersRequestBuilder.RegisterUserAsync(model, activate: false)).Id;
 
         // Act
         var response = await UsersClient.GetById(id);

@@ -31,9 +31,9 @@ public sealed class UpdateRoleTests : BaseUsersTests
     [Test]
     public async Task _403_WhenUserLacksRolesManage()
     {
-        // Arrange — valid bearer for an unknown user; server resolves an empty permission set.
+        // Arrange — bearer for the seeded "Rol Public" user: exists and has a role, but zero permissions.
         var model = UsersRequestBuilder.BuildUpdateRoleModel();
-        var token = JwtTokenFactory.CreateUserToken(Guid.NewGuid());
+        var token = JwtTokenFactory.GeneratePublicToken();
 
         // Act
         var response = await UsersClient.UpdateRole(1, model, token);
