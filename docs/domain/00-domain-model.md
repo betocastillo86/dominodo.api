@@ -40,9 +40,16 @@
 7. **Ejemplar canónico (primer módulo escrito a mano): `Users`** — con usuarios ya se pueden crear
    tenants después.
 
-## Estado de implementación (MVP slice, 2026-07-16)
+## Estado de implementación (MVP slice, 2026-07-18)
 
-Implementado y verificado en el host (`Users` + `Admin`); el resto del modelo sigue siendo diseño.
+Implementado y verificado en el host (`Users` + `Admin` + `Tenants`); el resto del modelo sigue siendo diseño.
+
+- **`Tenants`:** módulo completo — `Tenant` (§2.1, con `Slug` único/inmutable), `Apartment` (§2.3,
+  primer `ITenantOwned`), `ApartmentResident` (§2.4, entidad hija, multipropietario) y `TenantFeature`
+  (§2.2, entidad hija) con CRUD + scoping por tenant. Provee la implementación real de `ITenantDirectory`
+  (slug→Id, caché en memoria con invalidación por cambio de estado), que **reemplaza a
+  `NullTenantDirectory`** y hace resoluble el header `X-Tenant` en toda la plataforma. Fachada
+  `ITenantsModuleApi` (§2.5) e integration events (§2.6) publicados vía outbox Wolverine.
 
 - **`Users`:** registro (`§1.1`), verificación de teléfono por **OTP** (`§1.7`), **login** password-only
   con **JWT access + refresh** (rotación + revocación), y **gestión de roles** (listar/crear/actualizar)
@@ -234,6 +241,7 @@ El conjunto residencial y todo lo físico/estructural.
 | Campo | Tipo | Notas |
 | --- | --- | --- |
 | `Id` | `Guid` | PK. Este es el `tenant_id` del claim |
+| `Slug` | `string`* | **Único, inmutable, kebab-case** (`^[a-z0-9-]+$`, p. ej. `conjunto-aurora`). Es el valor que viaja en el header `X-Tenant` y que `ITenantDirectory.ResolveSlugAsync` mapea al `Id`. El `Id` (Guid) sigue siendo el `tenant_id` |
 | `Name` | `string` | |
 | `LegalId` | `string?` | NIT |
 | `Type` | `enum` | `Conjunto`, `Edificio`, `Mixto` |
@@ -241,7 +249,7 @@ El conjunto residencial y todo lo físico/estructural.
 | `Address` / `City` / `Country` | `string` | |
 | `Branding` | `json` | **JSON** — logo, colores, textos. No filtrable |
 | `Settings` | `json` | **JSON** — parámetros del conjunto no filtrables |
-| `CreatedAtUtc` | `DateTimeOffset` | |
+| `CreatedAtUtc` / `UpdatedAtUtc` | `DateTimeOffset` | fijados por el interceptor de auditoría |
 
 ## 2.2 `TenantFeature` (Ent bajo `Tenant`) — **`ITenantOwned`**
 

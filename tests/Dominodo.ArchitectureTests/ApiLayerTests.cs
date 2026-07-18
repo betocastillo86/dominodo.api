@@ -9,13 +9,15 @@ public sealed class ApiLayerTests
 {
     private static readonly Assembly UsersApplication = typeof(Users.Application.DependencyInjection).Assembly;
     private static readonly Assembly AdminApplication = typeof(Admin.Application.DependencyInjection).Assembly;
+    private static readonly Assembly TenantsApplication = typeof(Tenants.Application.DependencyInjection).Assembly;
     private static readonly Assembly UsersApi = typeof(Users.Api.IUsersApiMarker).Assembly;
     private static readonly Assembly AdminApi = typeof(Admin.Api.IAdminApiMarker).Assembly;
+    private static readonly Assembly TenantsApi = typeof(Tenants.Api.ITenantsApiMarker).Assembly;
 
     [Fact]
     public void Controllers_ShouldOnlyLiveInApiProjects()
     {
-        var result = Types.InAssemblies([UsersApplication, AdminApplication])
+        var result = Types.InAssemblies([UsersApplication, AdminApplication, TenantsApplication])
             .That()
             .Inherit(typeof(ControllerBase))
             .GetTypes();
@@ -27,11 +29,12 @@ public sealed class ApiLayerTests
     [Fact]
     public void Api_ShouldNotDependOnPersistence()
     {
-        var result = Types.InAssemblies([UsersApi, AdminApi])
+        var result = Types.InAssemblies([UsersApi, AdminApi, TenantsApi])
             .ShouldNot()
             .HaveDependencyOnAny(
                 "Dominodo.Users.Persistence",
-                "Dominodo.Admin.Persistence")
+                "Dominodo.Admin.Persistence",
+                "Dominodo.Tenants.Persistence")
             .GetResult();
 
         result.IsSuccessful.Should().BeTrue(

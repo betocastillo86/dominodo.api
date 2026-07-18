@@ -40,6 +40,11 @@
     <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Api\Dominodo.Admin.Api.csproj" />
     <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Contracts\Dominodo.Admin.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Modules\Admin\Dominodo.Admin.Persistence\Dominodo.Admin.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Tenants\Dominodo.Tenants.Domain\Dominodo.Tenants.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Tenants\Dominodo.Tenants.Application\Dominodo.Tenants.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Tenants\Dominodo.Tenants.Api\Dominodo.Tenants.Api.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Tenants\Dominodo.Tenants.Contracts\Dominodo.Tenants.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Tenants\Dominodo.Tenants.Persistence\Dominodo.Tenants.Persistence.csproj" />
     <ProjectReference Include="..\..\src\Adapters\Dominodo.Adapters.Email\Dominodo.Adapters.Email.csproj" />
     <ProjectReference Include="..\..\src\Adapters\Dominodo.Adapters.WhatsApp\Dominodo.Adapters.WhatsApp.csproj" />
   </ItemGroup>

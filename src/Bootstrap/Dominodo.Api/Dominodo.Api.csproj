@@ -37,6 +37,9 @@
     <ProjectReference Include="..\..\Modules\Admin\Dominodo.Admin.Api\Dominodo.Admin.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Admin\Dominodo.Admin.Application\Dominodo.Admin.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Admin\Dominodo.Admin.Persistence\Dominodo.Admin.Persistence.csproj" />
+    <ProjectReference Include="..\..\Modules\Tenants\Dominodo.Tenants.Api\Dominodo.Tenants.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Tenants\Dominodo.Tenants.Application\Dominodo.Tenants.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\Tenants\Dominodo.Tenants.Persistence\Dominodo.Tenants.Persistence.csproj" />
   </ItemGroup>
 
   <ItemGroup Label="Adapters">

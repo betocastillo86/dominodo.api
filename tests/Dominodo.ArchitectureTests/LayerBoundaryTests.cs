@@ -40,6 +40,7 @@ public sealed class LayerBoundaryTests
             [
                 typeof(Users.Application.DependencyInjection).Assembly,
                 typeof(Admin.Application.DependencyInjection).Assembly,
+                typeof(Tenants.Application.DependencyInjection).Assembly,
             ])
             .ShouldNot()
             .HaveDependencyOn(SharedInfrastructure)

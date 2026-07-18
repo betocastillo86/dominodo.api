@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The module's inbound HTTP adapter: controllers live here (the only module project with them).
+       They dispatch the module's internal MediatR commands via ISender; InternalsVisibleTo on
+       Tenants.Application grants access without making commands/queries public. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dominodo.Tenants.Application\Dominodo.Tenants.Application.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Infrastructure\Dominodo.Shared.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

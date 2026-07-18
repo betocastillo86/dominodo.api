@@ -82,9 +82,18 @@ public interface ITenantDirectory
     Task<Guid?> ResolveSlugAsync(string slug, CancellationToken ct);   // null if no such site
 }
 
-// Tenants.Application — internal impl, cached (slug→id is ~static; invalidate on rename)
+// Tenants.Application — internal impl, cached (slug→id is ~static; invalidate on status change)
 internal sealed class TenantDirectory(...) : ITenantDirectory { /* cache + registry lookup */ }
 ```
+
+> **Implemented (Fase Tenants, 2026-07-18).** The `Tenants` module now provides the real
+> `TenantDirectory` (singleton, `IMemoryCache` with a 1h TTL, reaches the scoped `ITenantRepository` via
+> `IServiceScopeFactory`), registered in `AddTenantsModule` and **overriding the `NullTenantDirectory`
+> fallback** wired by `Shared.Infrastructure`. It resolves only `Active`/`Onboarding` tenants — a
+> `Suspended` or unknown slug returns `null` (→ `400 Tenant.Unknown`). The `slug→Id` cache is evicted on
+> any tenant status change (a `TenantStatusChangedDomainEvent` handled by an in-module Wolverine handler),
+> so a suspension takes effect immediately rather than lingering until the TTL. Slug is immutable, so
+> rename never invalidates the mapping.
 
 ## ITenantContext
 

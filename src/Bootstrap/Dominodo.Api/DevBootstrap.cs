@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net.Sockets;
 using Dominodo.Admin.Persistence;
+using Dominodo.Tenants.Persistence;
 using Dominodo.Users.Persistence;
 
 namespace Dominodo.Api;
@@ -38,6 +39,7 @@ internal static class DevBootstrap
         // unreachable) must NOT block booting — log actionable guidance and let the app start.
         await MigrateAsync(logger, "Users", app.Services.MigrateUsersDatabaseAsync);
         await MigrateAsync(logger, "Admin", app.Services.MigrateAdminDatabaseAsync);
+        await MigrateAsync(logger, "Tenants", app.Services.MigrateTenantsDatabaseAsync);
     }
 
     private static async Task MigrateAsync(ILogger logger, string module, Func<CancellationToken, Task> migrate)

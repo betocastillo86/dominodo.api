@@ -6,6 +6,8 @@ using Dominodo.Api;
 using Dominodo.Shared.Application;
 using Dominodo.Shared.Infrastructure;
 using Dominodo.Shared.Infrastructure.Swagger;
+using Dominodo.Tenants.Application;
+using Dominodo.Tenants.Persistence;
 using Dominodo.Users.Application;
 using Dominodo.Users.Persistence;
 using JasperFx.CodeGeneration.Model;
@@ -32,6 +34,8 @@ builder.Services.AddUsersModule(builder.Configuration);
 builder.Services.AddUsersPersistence();
 builder.Services.AddAdminModule(builder.Configuration);
 builder.Services.AddAdminPersistence();
+builder.Services.AddTenantsModule(builder.Configuration);
+builder.Services.AddTenantsPersistence();
 
 // Permission resolution port (doc 12) — implemented here because it bridges to the Users facade,
 // which Shared.Infrastructure may not reference. Cached per (userId, tenant) with a short TTL.
@@ -56,10 +60,12 @@ builder.Host.UseWolverine(opts =>
     // one enrolled DbContext + ancillary message store per module (keeps each DbContext internal)
     opts.AddUsersMessaging(wolverineConnectionString);
     opts.AddAdminMessaging(wolverineConnectionString);
+    opts.AddTenantsMessaging(wolverineConnectionString);
 
     // module message handlers are internal; register them explicitly (conventional discovery skips
     // non-public types). IncludeType bypasses that filter.
     opts.Discovery.AddAdminHandlers();
+    opts.Discovery.AddTenantsHandlers();
 
     opts.Policies.UseDurableLocalQueues(); // swap to opts.UseRabbitMq(...) later — handlers unchanged
 });
@@ -71,7 +77,8 @@ builder.Services
     .AddControllers()
     // Module controllers live in each module's *.Api assembly — register them as parts.
     // (Admin.Api added here once it exposes controllers.)
-    .AddApplicationPart(typeof(Dominodo.Users.Api.IUsersApiMarker).Assembly);
+    .AddApplicationPart(typeof(Dominodo.Users.Api.IUsersApiMarker).Assembly)
+    .AddApplicationPart(typeof(Dominodo.Tenants.Api.ITenantsApiMarker).Assembly);
 builder.Services.AddDominodoSwagger();
 
 builder.Services.AddHealthChecks()

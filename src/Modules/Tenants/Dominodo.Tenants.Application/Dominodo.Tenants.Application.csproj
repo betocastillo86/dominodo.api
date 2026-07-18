@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The module's controllers live in the sibling Dominodo.Tenants.Api project. They dispatch this
+       assembly's internal MediatR commands/queries via ISender, so grant Tenants.Api access to
+       internals rather than making the requests public. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Dominodo.Tenants.Api" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Dominodo.Tenants.Domain\Dominodo.Tenants.Domain.csproj" />
+    <ProjectReference Include="..\Dominodo.Tenants.Contracts\Dominodo.Tenants.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Abstractions\Dominodo.Shared.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Application\Dominodo.Shared.Application.csproj" />
+    <!-- Cross-module read only: validate a UserId exists via IUsersModuleApi. Contracts-only reference. -->
+    <ProjectReference Include="..\..\Users\Dominodo.Users.Contracts\Dominodo.Users.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>
