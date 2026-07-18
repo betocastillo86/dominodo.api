@@ -27,4 +27,14 @@ public interface IUsersClient
         [Query] int page = 1,
         [Query] int pageSize = 20,
         [Authorize("Bearer")] string? token = null);
+
+    [Get("/api/v1/roles/{id}")]
+    Task<ApiResponse<RoleDetailModel>> GetRoleById(
+        int id,
+        [Authorize("Bearer")] string? token = null);
+
+    [Post("/api/v1/roles")]
+    Task<ApiResponse<CreatedIntModel>> CreateRole(
+        [Body] NewRoleModel model,
+        [Authorize("Bearer")] string? token = null);
 }

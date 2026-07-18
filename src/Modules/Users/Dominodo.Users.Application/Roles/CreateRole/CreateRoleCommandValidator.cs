@@ -15,6 +15,7 @@ internal sealed class CreateRoleCommandValidator : AbstractValidator<CreateRoleC
             .WithMessage("Scope must be either 'Platform' or 'Tenant'.");
 
         RuleFor(x => x.PermissionIds)
+            .NotEmpty()
             .NotNull();
     }
 }

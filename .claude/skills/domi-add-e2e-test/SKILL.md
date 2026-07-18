@@ -27,6 +27,10 @@ and its Application/Contracts DTOs. Extract, per endpoint:
 - **Success shape** → `PagedResult<Dto>` (→ `PagedResultModel<T>`), a `Dto`, a created id, or 204.
 - **Error codes** → the `Error` codes the handler returns (e.g. `Validation.Failed`, `Role.NotFound`).
   The API's `title` in the RFC 9457 body **is** the error code.
+- **Validation rules** → open the request's FluentValidation validator
+  (`src/Modules/<Module>/Dominodo.<Module>.Application/<Feature>/<Command>Validator.cs`) and **enumerate
+  every `RuleFor`**. This is the source of truth for the `400 Validation.Failed` cases — see Step 6a.
+  A `400` bullet is **never** "check one field"; it is "cover the whole validator."
 
 > If a case isn't reachable yet (a permission not wired, or tenancy — see README §7), say so and adjust
 > rather than writing a test that can't pass.
@@ -128,12 +132,36 @@ public sealed class GetRolesTests : BaseUsersTests
 }
 ```
 
+## Step 6a — A `400` test must cover the **whole** validator
+
+Read the request's validator and list every `RuleFor` constraint (`.NotEmpty()`/`.NotNull()`,
+`.MaximumLength(n)` → `new string('x', n+1)`, `.Must(...)`/enum-parse → a value that fails it, …).
+**Prefer one test** that breaks every field at once and asserts each error together — cleaner than a test
+per field:
+
+```csharp
+var model = UsersRequestBuilder.BuildNewRoleModel() with
+    { Name = "", Description = new string('x', 301), Scope = "NotAScope", PermissionIds = null };
+var response = await UsersClient.CreateRole(model, token);
+response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+response.ShouldHaveValidationError(nameof(NewRoleModel.Name))
+        .ShouldHaveValidationError(nameof(NewRoleModel.Description))
+        .ShouldHaveValidationError(nameof(NewRoleModel.Scope))
+        .ShouldHaveValidationError(nameof(NewRoleModel.PermissionIds));
+```
+
+Add a **second** test only for a rule that can't coexist in the same payload (mutually exclusive
+constraints on one field, e.g. empty vs. too-long `Name`). The point is coverage of every rule — not one
+test per rule.
+
 ## Non-negotiables (checklist)
 
 - [ ] Models replicated **by hand**, not referenced/copied from `src/` or generated from OpenAPI.
 - [ ] Client used **only** inside `Act`; all Arrange via the builder.
 - [ ] Builder Arrange helpers that hit the API **throw on non-success**.
 - [ ] Test names `_<status>_<scenario>`; class `<Verb><Noun>Tests`.
+- [ ] The `400` test(s) cover **every** rule in the request's validator (ideally one test breaking all
+      fields at once, not just the first field). Cross-check against `<Command>Validator.cs` — see Step 6a.
 - [ ] Conflict/duplicate tests build their own unique prerequisite (fresh fake data) — tests share one
       DB, so isolate by per-test data, never by resets or fixed state.
 - [ ] Cross-module effects (integration events) asserted via `RetryPolicies.Until<T>` polling, never an

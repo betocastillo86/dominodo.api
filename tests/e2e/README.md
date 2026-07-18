@@ -332,6 +332,16 @@ public class CreateRequestTests : BaseOperationsTests
 }
 ```
 
+> **A `400` test must cover the whole validator, not the first field.** Open the request's FluentValidation
+> validator (`src/Modules/<Module>/Dominodo.<Module>.Application/<Feature>/<Command>Validator.cs`) and list
+> every `RuleFor` constraint: `.NotEmpty()`/`.NotNull()` → empty/null; `.MaximumLength(n)` →
+> `new string('x', n + 1)`; `.Must(...)`/enum-parse → a value that fails the predicate. **Prefer one test**
+> that breaks every field at once and chains `ShouldHaveValidationError(nameof(Model.Field))` per property —
+> cleaner than a test per field. Add a **second** test only for a rule that can't coexist in the same
+> payload (e.g. empty vs. too-long `Name`). Stopping at `Name` when the validator also checks `Description`,
+> `Scope`, and `PermissionIds` leaves broken validation silently untested — the exact failure this suite
+> exists to catch.
+
 ### RequestBuilders — the heart of the `Arrange`
 
 One builder per module, composable: a builder may depend on others to assemble complete use cases (just
@@ -414,7 +424,8 @@ The E2E suite **follows** the API, on purpose and by intent. The flow:
    - the **Refit method(s)** in `I<Module>Client`,
    - the **RequestBuilder** method(s) for the `Arrange`,
    - the **tests** (happy path + errors: 400/401/403/404/409/422 per doc 08, and the doc-09 tenant matrix
-     when applicable).
+     when applicable). **A `400` is exhaustive:** open the request's FluentValidation validator and write
+     a test that breaks **every** `RuleFor` field at once (not just the first). See the callout in §8.
 3. **Drift is visible, not silent.** If the API changed a contract, the hand-written model no longer
    matches and the test fails. That failure is the "something changed, review it carefully" signal —
    exactly what you wanted.
@@ -430,6 +441,9 @@ The E2E suite **follows** the API, on purpose and by intent. The flow:
   - [ ] Refit method(s) with versioned route.
   - [ ] RequestBuilder for the `Arrange`.
   - [ ] Happy path + relevant errors (doc 08).
+  - [ ] **Validation 400s cover the whole validator:** one test breaking every `RuleFor` field at once
+        (empty, max-length + 1, invalid enum/predicate, null, …) — cross-checked against
+        `<Command>Validator.cs`, not just the first field.
   - [ ] Tenant matrix if the endpoint is tenant-scoped/anonymous/super-admin (doc 09).
   - [ ] Eventual assert (Polly) if it fires integration events (doc 07).
   - [ ] Client used **only** in the `Act`.
