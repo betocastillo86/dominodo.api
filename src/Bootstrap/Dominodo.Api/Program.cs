@@ -52,6 +52,16 @@ builder.Host.UseWolverine(opts =>
     opts.MultipleHandlerBehavior = MultipleHandlerBehavior.Separated;   // each module: own tx + retry
     opts.Durability.MessageIdentity = MessageIdentity.IdAndDestination; // same event, many modules
 
+    // Single-instance deployment: skip Wolverine's distributed node coordination (leader election,
+    // node registration, cross-node health checks over the DB control channel). Balanced (the default)
+    // is for multi-replica clusters; with one instance it only produces "duplicate leader agent" /
+    // split-brain warnings + StopRemoteAgent timeouts when a process dies without a clean shutdown and
+    // leaves an orphaned row in wolverine.wolverine_nodes. Solo sidesteps all of that.
+    // ⚠️ REMINDER: the moment we run MORE THAN ONE instance/replica, switch this back to
+    // DurabilityMode.Balanced (or remove the line) — Solo assumes it is the only node and will NOT
+    // coordinate agent ownership across nodes.
+    opts.Durability.Mode = DurabilityMode.Solo;
+
     // MediatR stays for in-module dispatch (doc 07); its ISender is registered via a factory, so
     // Wolverine's generated handler code must service-locate it. Allow it (Wolverine 6 defaults to
     // NotAllowed). The report fires once per handler at codegen time, not per message.
