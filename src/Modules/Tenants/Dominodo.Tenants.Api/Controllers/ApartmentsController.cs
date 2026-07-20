@@ -9,20 +9,23 @@ using Dominodo.Tenants.Application.Apartments.GetApartments;
 using Dominodo.Tenants.Application.Apartments.UpdateApartment;
 using Dominodo.Tenants.Contracts;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Dominodo.Tenants.Api.Controllers;
 
 // Tenant-scoped apartment management. Every endpoint REQUIRES the X-Tenant header — the resolved tenant
-// scopes all reads/writes (doc 09). Reads are gated by tenants.view, writes by tenants.edit (per-action).
+// scopes all reads/writes (doc 09). List/read of all apartments needs apartments.view; create needs
+// apartments.create; update/status need apartments.edit. GET {id} is dual-mode: apartments.view OR the
+// caller is an active resident of that apartment (resolved in the handler, leak-safe 404 on denial).
 [ApiController]
 [Produces("application/json")]
 [Route("api/v{version:apiVersion}/apartments")]
 public sealed class ApartmentsController(ISender sender) : ControllerBase
 {
     [HttpGet]
-    [HasPermission(Permissions.TenantsView)]
+    [HasPermission(Permissions.ApartmentsView)]
     [EndpointSummary("Lists apartments in the current tenant, paged and filterable.")]
     [ProducesResponseType(typeof(PagedResult<ApartmentDto>), StatusCodes.Status200OK)]
     public async Task<IResult> List(
@@ -38,8 +41,8 @@ public sealed class ApartmentsController(ISender sender) : ControllerBase
     }
 
     [HttpGet("{id:guid}", Name = "GetApartmentById")]
-    [HasPermission(Permissions.TenantsView)]
-    [EndpointSummary("Gets an apartment by its identifier (within the current tenant).")]
+    [Authorize]
+    [EndpointSummary("Gets an apartment by its identifier (within the current tenant). Dual-mode: callers with apartments.view read any apartment; an active resident reads only their own. Any other id returns 404 (leak-safe).")]
     [ProducesResponseType(typeof(ApartmentDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IResult> GetById(Guid id, CancellationToken ct)
@@ -49,8 +52,8 @@ public sealed class ApartmentsController(ISender sender) : ControllerBase
     }
 
     [HttpPost]
-    [HasPermission(Permissions.TenantsEdit)]
-    [EndpointSummary("Creates an apartment in the current tenant. Requires the tenants.edit permission.")]
+    [HasPermission(Permissions.ApartmentsCreate)]
+    [EndpointSummary("Creates an apartment in the current tenant. Requires the apartments.create permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -71,8 +74,8 @@ public sealed class ApartmentsController(ISender sender) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [HasPermission(Permissions.TenantsEdit)]
-    [EndpointSummary("Updates an apartment. Requires the tenants.edit permission.")]
+    [HasPermission(Permissions.ApartmentsEdit)]
+    [EndpointSummary("Updates an apartment. Requires the apartments.edit permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -93,8 +96,8 @@ public sealed class ApartmentsController(ISender sender) : ControllerBase
     }
 
     [HttpPut("{id:guid}/status")]
-    [HasPermission(Permissions.TenantsEdit)]
-    [EndpointSummary("Changes an apartment's status (occupied/vacant). Requires the tenants.edit permission.")]
+    [HasPermission(Permissions.ApartmentsEdit)]
+    [EndpointSummary("Changes an apartment's status (occupied/vacant). Requires the apartments.edit permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

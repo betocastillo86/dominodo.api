@@ -35,6 +35,9 @@ public static class DominodoConstants
         public const string TenantsView         = "tenants.view";
         public const string TenantsEdit         = "tenants.edit";
         public const string MembershipsManage   = "memberships.manage";
+        public const string ApartmentsCreate    = "apartments.create";
+        public const string ApartmentsView      = "apartments.view";
+        public const string ApartmentsEdit      = "apartments.edit";
     }
 
     public static class Defaults
@@ -66,6 +69,9 @@ public static class DominodoConstants
             ["tenants.view"]         = Guid.Parse("00000000-0000-0000-0000-000000001011"),
             ["tenants.edit"]         = Guid.Parse("00000000-0000-0000-0000-000000001012"),
             ["memberships.manage"]   = Guid.Parse("00000000-0000-0000-0000-000000001013"),
+            ["apartments.create"]    = Guid.Parse("00000000-0000-0000-0000-000000001014"),
+            ["apartments.view"]      = Guid.Parse("00000000-0000-0000-0000-000000001015"),
+            ["apartments.edit"]      = Guid.Parse("00000000-0000-0000-0000-000000001016"),
         };
 
         public static Guid UserIdFor(string permission) =>
@@ -93,6 +99,9 @@ public static class DominodoConstants
             ["tenants.view"]         = Guid.Parse("00000000-0000-0000-0000-000000001111"),
             ["tenants.edit"]         = Guid.Parse("00000000-0000-0000-0000-000000001112"),
             ["memberships.manage"]   = Guid.Parse("00000000-0000-0000-0000-000000001113"),
+            ["apartments.create"]    = Guid.Parse("00000000-0000-0000-0000-000000001114"),
+            ["apartments.view"]      = Guid.Parse("00000000-0000-0000-0000-000000001115"),
+            ["apartments.edit"]      = Guid.Parse("00000000-0000-0000-0000-000000001116"),
         };
 
         public static Guid TenantUserIdFor(string permission) =>

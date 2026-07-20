@@ -163,6 +163,51 @@ deterministic ids**:
 - This environment shares the Development database and uses the `dominodo-tests` JWT settings; the E2E
   token minter must match them.
 
+## Resource-based (ownership) authorization
+
+`[HasPermission]` is **resource-blind by design**: it answers `(user, tenant) → bool`, never
+`(user, tenant, resourceId) → bool`. That is correct for capability checks ("may this user manage
+apartments at all?"), but it cannot express **ownership** ("may this user read *this specific*
+apartment because they live in it?"). Granting a resident `apartments.view` would leak *every*
+apartment in the conjunto; withholding it blocks them from their own. This is a distinct concern.
+
+**`IResourceAccessAuthorizer`** (port in `Shared.Abstractions`, impl `ResourceAccessAuthorizer` in
+`Shared.Infrastructure`) resolves the rule **"caller holds the permission (RBAC) OR the caller owns
+this resource"**:
+
+```csharp
+var allowed = await authorizer.HasAccessAsync(
+    Permissions.ApartmentsView,                                  // RBAC path (staff)
+    userId => apartment.Residents.Any(r => r.UserId == userId && r.IsActive),  // ownership path
+    ct);
+if (!allowed) { return Error.NotFound("Apartment.NotFound", "Apartment not found."); }  // leak-safe
+```
+
+- **Ownership is always a same-module data check** the caller supplies as a delegate — never a
+  cross-module port. The guard stays transport- and domain-agnostic; each module decides what
+  "owns" means from its own already-loaded aggregate (here, an active `ApartmentResident` row).
+- The delegate runs **only when the permission is absent** (short-circuits the ownership query for
+  staff who already pass RBAC). Fails closed (`false`) when there is no authenticated caller.
+- The guard returns a **plain access boolean**; the handler shapes the transport error. For reads,
+  denial returns the **same `NotFound`** as a missing row — **leak-safe**, no existence disclosure
+  (an outsider cannot distinguish "exists but not yours" from "does not exist").
+- It extends to **writes** with no redesign: swap the permission argument (e.g. `ApartmentsEdit`)
+  at the top of a future edit handler; the ownership axis is identical.
+
+**`ICurrentUser`** (interface in `Shared.Kernel`, impl `HttpCurrentUser` in `Shared.Infrastructure`)
+is the caller-identity seam — a mirror of `ITenantContext`. It exposes the authenticated caller's
+`UserId` (and `IsAuthenticated`) ambiently, reading the `sub`/`NameIdentifier` claim the same way the
+permission handler does, so handlers and the guard need not thread the claim through every command.
+
+| Piece | Project | Notes |
+| --- | --- | --- |
+| `ICurrentUser` | `Shared.Kernel` | Ambient caller identity; mirror of `ITenantContext` |
+| `HttpCurrentUser` | `Shared.Infrastructure` | Reads `NameIdentifier ?? sub`; fails closed |
+| `IResourceAccessAuthorizer` (port) | `Shared.Abstractions` | "permission OR caller-supplied ownership" |
+| `ResourceAccessAuthorizer` | `Shared.Infrastructure` | Depends on `ICurrentUser` + `ITenantContext` + `IPermissionProvider` |
+
+See [ADR-0010](../adr/0010-autorizacion-basada-en-recurso-propiedad.md).
+
 ## Relationship to multitenancy (revises doc 09)
 
 [09 — Multitenancy](./09-multitenancy.md) originally described validating a JWT `tenant_id` claim against

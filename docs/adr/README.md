@@ -27,3 +27,4 @@ historia y el razonamiento quedan aquí sin inflar el contexto del agente.
 | [0007](./0007-otp-a-traves-del-modulo-admin.md) | OTP entregado a través del módulo `Admin` (WhatsApp con fallback email) | Accepted |
 | [0008](./0008-rbac-scope-y-autoridad-de-plataforma-por-dato.md) | RBAC: `Role.Scope` y autoridad de plataforma por dato (`PlatformRoleAssignment`) | Accepted |
 | [0009](./0009-bus-de-mensajeria-wolverine.md) | Bus de mensajería: Wolverine (reemplaza a MassTransit) | Accepted |
+| [0010](./0010-autorizacion-basada-en-recurso-propiedad.md) | Autorización basada en recurso (propiedad) | Proposed |

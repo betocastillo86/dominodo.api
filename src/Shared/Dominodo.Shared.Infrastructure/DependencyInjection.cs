@@ -28,6 +28,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<ITenantContext, HttpTenantContext>();
+        services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
         // Fallback — overridden when the Tenants module registers its own ITenantDirectory
         services.AddSingleton<ITenantDirectory, NullTenantDirectory>();
@@ -106,6 +107,10 @@ public static class DependencyInjection
         // caller's effective permissions. See docs/architecture/12-permission-authorization.md.
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
+        // Resource-based (ownership) authorization: "permission OR caller-supplied ownership".
+        // See docs/architecture/12-permission-authorization.md.
+        services.AddScoped<IResourceAccessAuthorizer, ResourceAccessAuthorizer>();
 
         return services;
     }

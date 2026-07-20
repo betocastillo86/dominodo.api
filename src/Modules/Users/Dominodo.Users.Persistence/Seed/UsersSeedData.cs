@@ -48,7 +48,10 @@ public static class UsersSeedData
         new(10, PermissionCodes.TenantsCreate,       "Crear conjuntos residenciales.",        "Plataforma"),
         new(11, PermissionCodes.TenantsView,         "Ver conjuntos residenciales.",          "Plataforma"),
         new(12, PermissionCodes.TenantsEdit,         "Editar conjuntos residenciales.",       "Plataforma"),
-        new(13, PermissionCodes.MembershipsManage,   "Gestionar membresías de un conjunto.",  "Membresías")
+        new(13, PermissionCodes.MembershipsManage,   "Gestionar membresías de un conjunto.",  "Membresías"),
+        new(14, PermissionCodes.ApartmentsCreate,    "Crear apartamentos.",                    "Apartamentos"),
+        new(15, PermissionCodes.ApartmentsView,      "Ver apartamentos.",                      "Apartamentos"),
+        new(16, PermissionCodes.ApartmentsEdit,      "Editar apartamentos.",                   "Apartamentos")
     };
 
     // SuperAdmin gets every permission; Administrador gets memberships.manage for tenant-scoped access.

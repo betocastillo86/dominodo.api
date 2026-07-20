@@ -34,4 +34,9 @@ public static class Permissions
 
     // Membresías
     public const string MembershipsManage = "memberships.manage";  // invite/manage members inside a conjunto
+
+    // Apartamentos
+    public const string ApartmentsCreate = "apartments.create";
+    public const string ApartmentsView   = "apartments.view";
+    public const string ApartmentsEdit   = "apartments.edit";
 }
