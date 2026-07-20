@@ -285,6 +285,132 @@ public sealed class UsersRequestBuilder(IUsersClient users, ISqlClient sql, JwtT
     }
 
     /// <summary>
+    /// Builds a valid <see cref="InviteMemberModel"/> (E.164 phone, positive role id). Any field is
+    /// overridable: <c>model with { Phone = "" }</c> for the 400 case. Does NOT call the API — the
+    /// phone/role it references need not exist (used as-is for validation/negative cases).
+    /// </summary>
+    public InviteMemberModel BuildInviteMemberModel(string? phone = null, int roleId = 1)
+    {
+        return new InviteMemberModel
+        {
+            Phone = phone ?? Faker.E164Phone(),
+            RoleId = roleId,
+        };
+    }
+
+    /// <summary>
+    /// Full Arrange: registers a fresh activated user and creates a Tenant-scope role, then returns a
+    /// valid <see cref="InviteMemberModel"/> that would invite that user with that role. Does NOT call
+    /// the invite endpoint (the endpoint under test). Throws on any non-success prerequisite step.
+    /// </summary>
+    public async Task<InviteMemberModel> ArrangeInviteMemberModelAsync()
+    {
+        var user = await RegisterUserAsync();
+        var role = await CreateRoleAsync(scope: "Tenant");
+        return BuildInviteMemberModel(phone: user.Phone, roleId: role.Id);
+    }
+
+    /// <summary>
+    /// Full Arrange: registers a fresh activated user, creates a Tenant-scope role, and invites the user
+    /// into <paramref name="tenantSlug"/> as a platform manager (memberships.manage) — leaving an
+    /// <c>Invited</c> membership. Returns the created membership id (only the invite endpoint exposes it —
+    /// the memberships list does not), the persisted user, and the granted role id. Throws on any
+    /// non-success step.
+    /// </summary>
+    public async Task<ArrangedMembership> InvitePlatformMembershipAsync(string tenantSlug)
+    {
+        var user = await RegisterUserAsync();
+        var role = await CreateRoleAsync(scope: "Tenant");
+
+        var token = _jwtTokenFactory.GenerateToken(DominodoConstants.Permission.MembershipsManage);
+        var model = new InviteMemberModel { Phone = user.Phone, RoleId = role.Id };
+
+        var response = await _users.InviteMember(model, tenantSlug, token);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: inviting a member into '{tenantSlug}' returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+
+        return new ArrangedMembership(response.Content!.Id, user, role.Id);
+    }
+
+    /// <summary>
+    /// Builds a valid <see cref="ChangeMemberRoleModel"/>. Does NOT call the API.
+    /// </summary>
+    public ChangeMemberRoleModel BuildChangeMemberRoleModel(int roleId)
+    {
+        return new ChangeMemberRoleModel { RoleId = roleId };
+    }
+
+    /// <summary>
+    /// Full Arrange: invites a fresh user into <paramref name="tenantSlug"/> (via the platform manager
+    /// path) and then accepts on the invitee's behalf, leaving an <c>Active</c> membership. Returns the
+    /// same <see cref="ArrangedMembership"/> (its id is stable across accept). Throws on any non-success
+    /// step. Use for endpoints that require an already-active membership (suspend, …) — never suspend a
+    /// seeded membership, which other tests depend on.
+    /// </summary>
+    public async Task<ArrangedMembership> ArrangeActiveMembershipAsync(string tenantSlug)
+    {
+        var invited = await InvitePlatformMembershipAsync(tenantSlug);
+
+        var token = _jwtTokenFactory.CreateUserToken(invited.User.Id);
+        var response = await _users.AcceptInvitation(tenantSlug, token);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: accepting invitation in '{tenantSlug}' returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+
+        return invited;
+    }
+
+    /// <summary>
+    /// Full Arrange: builds an <c>Active</c> membership (invite + accept) and then suspends it via the
+    /// platform manager, leaving a <c>Suspended</c> membership. Returns the same
+    /// <see cref="ArrangedMembership"/> (its id is stable). Throws on any non-success step. Use for
+    /// endpoints that require a suspended membership (reactivate).
+    /// </summary>
+    public async Task<ArrangedMembership> ArrangeSuspendedMembershipAsync(string tenantSlug)
+    {
+        var active = await ArrangeActiveMembershipAsync(tenantSlug);
+
+        var token = _jwtTokenFactory.GenerateToken(DominodoConstants.Permission.MembershipsManage);
+        var response = await _users.SuspendMembership(active.MembershipId, tenantSlug, token);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: suspending membership {active.MembershipId} in '{tenantSlug}' returned " +
+                $"{(int)response.StatusCode}. Body: {response.Error?.Content}");
+        }
+
+        return active;
+    }
+
+    /// <summary>
+    /// Reads back a single membership via <c>GET /memberships</c> (with the seeded memberships.manage
+    /// token, scoped to <paramref name="tenantSlug"/>) and returns the row for <paramref name="userId"/>,
+    /// or <c>null</c> if absent — used to assert an endpoint's side effect (e.g. Status flipped to Active).
+    /// Throws on a non-success read.
+    /// </summary>
+    public async Task<MembershipModel?> FindMembershipAsync(string tenantSlug, Guid userId)
+    {
+        var token = _jwtTokenFactory.GenerateToken(DominodoConstants.Permission.MembershipsManage);
+
+        var response = await _users.GetMemberships(1, 100, tenantSlug, token);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Read-back failed: GET memberships for '{tenantSlug}' returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+
+        return response.Content!.Items.FirstOrDefault(m => m.UserId == userId);
+    }
+
+    /// <summary>
     /// Builds a valid <see cref="UpdateRoleModel"/> with a unique name.
     /// Any field is overridable: <c>model with { Name = "Custom" }</c>.
     /// </summary>

@@ -75,4 +75,67 @@ public interface IUsersClient
         [Query] int pageSize = 20,
         [Header("X-Tenant")] string? tenant = null,
         [Authorize("Bearer")] string? token = null);
+
+    // Invite a registered user (by phone) into the resolved tenant — MembershipsController.Invite,
+    // guarded by [HasPermission(Permissions.MembershipsManage)] and scoped by the X-Tenant header.
+    // Success is 201 Created ({"id": guid}). The X-Tenant param is resolved BEFORE authorization by
+    // TenantResolutionMiddleware: an unknown slug ⇒ 400 Tenant.Unknown; a valid slug the tenant-scoped
+    // caller has no Active membership in ⇒ authorization fails closed ⇒ 403 (tenant isolation).
+    [Post("/api/v1/memberships/invite")]
+    Task<ApiResponse<CreatedModel>> InviteMember(
+        [Body] InviteMemberModel model,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // Accept the caller's OWN invitation in the resolved tenant — MembershipsController.Accept. Self-service,
+    // so guarded by plain [Authorize] (any valid bearer, no permission). No body; success is 204 NoContent.
+    // Scoped by X-Tenant (resolved before the handler): unknown slug ⇒ 400 Tenant.Unknown. The handler looks
+    // up the membership by (caller sub, resolved tenant): none ⇒ 404 Membership.NotFound; a non-Invited
+    // membership (e.g. already Active) ⇒ 409 Membership.NotInvited.
+    [Post("/api/v1/memberships/accept")]
+    Task<IApiResponse> AcceptInvitation(
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // Change a member's role — MembershipsController.ChangeRole, guarded by
+    // [HasPermission(Permissions.MembershipsManage)] and scoped by X-Tenant. Success is 204 NoContent.
+    // The membership is loaded ForCurrentTenant, so an unknown id (or one in another tenant) ⇒ 404
+    // Membership.NotFound; a non-existent role ⇒ 400 Membership.RoleNotFound; a Platform-scope role ⇒
+    // 400 Membership.RoleNotTenantScoped.
+    [Put("/api/v1/memberships/{id}/role")]
+    Task<IApiResponse> ChangeMemberRole(
+        Guid id,
+        [Body] ChangeMemberRoleModel model,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // Suspend a member — MembershipsController.Suspend, guarded by
+    // [HasPermission(Permissions.MembershipsManage)] and scoped by X-Tenant. No body; success is 204
+    // NoContent. The membership is loaded ForCurrentTenant: unknown id (or one in another tenant) ⇒ 404
+    // Membership.NotFound; a non-Active membership (e.g. still Invited) ⇒ 409 Membership.NotActive.
+    [Put("/api/v1/memberships/{id}/suspend")]
+    Task<IApiResponse> SuspendMembership(
+        Guid id,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // Reactivate a suspended member — MembershipsController.Reactivate, guarded by
+    // [HasPermission(Permissions.MembershipsManage)] and scoped by X-Tenant. No body; success is 204
+    // NoContent. The membership is loaded ForCurrentTenant: unknown id (or one in another tenant) ⇒ 404
+    // Membership.NotFound; a non-Suspended membership (e.g. Active) ⇒ 409 Membership.NotSuspended.
+    [Put("/api/v1/memberships/{id}/reactivate")]
+    Task<IApiResponse> ReactivateMembership(
+        Guid id,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // Remove a member from the conjunto — MembershipsController.Remove, guarded by
+    // [HasPermission(Permissions.MembershipsManage)] and scoped by X-Tenant. Hard-deletes the row (any
+    // status); success is 204 NoContent. The membership is loaded ForCurrentTenant: unknown id (or one in
+    // another tenant) ⇒ 404 Membership.NotFound.
+    [Delete("/api/v1/memberships/{id}")]
+    Task<IApiResponse> RemoveMembership(
+        Guid id,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
 }
