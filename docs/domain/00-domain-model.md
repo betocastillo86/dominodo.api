@@ -32,15 +32,17 @@
 4. **PQRS + paquetería + visitas** viven en **un solo módulo** (`Operations`).
 5. **Notifications + Configuration viven en un solo módulo `Admin`** (mismo schema, mismo futuro
    servicio): son temas administrativos que no queremos atomizar.
-6. **Tenant en el token** (claim `tenant_id`). Login global → elegir conjunto → token *tenant-scoped*
-   con el rol de ese conjunto. **`SuperAdmin`** es un rol de **ámbito `Platform`** con todos los
-   permisos; se asigna a un usuario **por dato** (una fila `PlatformRoleAssignment`), no por
-   constante en el código. Su acceso cross-tenant **sale de tener todos los permisos**, no de un
-   bypass hardcodeado. No es un módulo ni un usuario aparte.
+6. **Tenant fuera del token** (el token es *tenant-agnostic*, **sin** claim `tenant_id`). El conjunto
+   llega por el header `X-Tenant` (slug) en cada request; el acceso se decide por los **permisos
+   resueltos server-side** para ese `(user, tenant)`, no por un claim del token. **`SuperAdmin`** es un
+   rol de **ámbito `Platform`** con todos los permisos; se asigna a un usuario **por dato** (una fila
+   `PlatformRoleAssignment`), no por constante en el código. Su acceso cross-tenant **sale de tener
+   todos los permisos**, no de un bypass hardcodeado. No es un módulo ni un usuario aparte.
+   *(Corrige la intención original de un token tenant-scoped con `tenant_id`; ver doc 12.)*
 7. **Ejemplar canónico (primer módulo escrito a mano): `Users`** — con usuarios ya se pueden crear
    tenants después.
 
-## Estado de implementación (MVP slice, 2026-07-18)
+## Estado de implementación (MVP slice, 2026-07-19)
 
 Implementado y verificado en el host (`Users` + `Admin` + `Tenants`); el resto del modelo sigue siendo diseño.
 
@@ -54,15 +56,20 @@ Implementado y verificado en el host (`Users` + `Admin` + `Tenants`); el resto d
 - **`Users`:** registro (`§1.1`), verificación de teléfono por **OTP** (`§1.7`), **login** password-only
   con **JWT access + refresh** (rotación + revocación), y **gestión de roles** (listar/crear/actualizar)
   con permisos read-only (`§1.2`–`§1.4`). `PlatformRoleAssignment` (`§1.5`) sembrado para el SuperAdmin
-  bootstrap. **Pendiente:** `Membership` (`§1.6`) y los tokens *tenant-scoped*.
+  bootstrap. **`Membership` (`§1.6`) implementado:** aggregate `ITenantOwned` (invitar por teléfono,
+  aceptar, cambiar rol, suspender/reactivar, remover), permiso `memberships.manage` sembrado a
+  `Administrador`, e integration events (`§1.9`) vía outbox Wolverine. Esto enciende la rama tenant de la
+  resolución de permisos (doc 12).
 - **`Admin`:** slice mínimo de notificaciones — consume el evento OTP de `Users` y entrega por WhatsApp
   (fallback email). El resto de `§4` es diseño.
-- **Modelo de token (hoy):** el access token lleva `sub = userId` + un claim `role` **por cada rol de
-  ámbito `Platform`** del usuario, resuelto desde sus filas `PlatformRoleAssignment` (`§1.5`) — el
-  `role=SuperAdmin` del bootstrap sale de dato, no de código. El claim `tenant_id` y los tokens
-  *tenant-scoped* (decisión §6) llegan con `Membership`.
-- **Fachada:** `IUsersModuleApi` expone hoy `GetUserById`, `GetUserByPhone` y `GetPlatformPermissions`.
-  `GetMemberships`/`GetEffectivePermissions` (`§1.8`) se difieren con `Membership`.
+- **Modelo de token (hoy):** el access token es **tenant-agnostic** — lleva `sub = userId` + un claim
+  `role` **por cada rol de ámbito `Platform`** del usuario, resuelto desde sus filas
+  `PlatformRoleAssignment` (`§1.5`); el `role=SuperAdmin` del bootstrap sale de dato, no de código. **No
+  hay claim `tenant_id`**: el conjunto llega por `X-Tenant` y el acceso se decide por los permisos
+  resueltos server-side para `(user, tenant)` (doc 12). *(Supera la decisión §6 de tokens tenant-scoped.)*
+- **Fachada:** `IUsersModuleApi` expone `GetUserById`, `GetUserByPhone`, `GetPlatformPermissions`,
+  **`GetMemberships`** y **`GetEffectivePermissions`** (`§1.8`, unión platform ∪ tenant) — estos dos ya
+  implementados con `Membership`.
 - Motor de datos = **SQL Server** (un schema por módulo). Bus = **Wolverine** (ver `docs/adr/`).
 
 ## Mapa de módulos
@@ -230,7 +237,8 @@ GetEffectivePermissions(userId, tenantId) -> PermissionDto[]   // platform ∪ t
 ## 1.9 Integration events (Contracts)
 
 `UserRegisteredIntegrationEvent`, `MembershipCreatedIntegrationEvent`,
-`MembershipSuspendedIntegrationEvent`.
+`MembershipSuspendedIntegrationEvent`, `MembershipChangedIntegrationEvent` (cambio de rol /
+reactivación — alimenta la invalidación de la caché de permisos en el host, doc 12).
 
 ---
 
@@ -242,8 +250,8 @@ El conjunto residencial y todo lo físico/estructural.
 
 | Campo | Tipo | Notas |
 | --- | --- | --- |
-| `Id` | `Guid` | PK. Este es el `tenant_id` del claim |
-| `Slug` | `string`* | **Único, inmutable, kebab-case** (`^[a-z0-9-]+$`, p. ej. `conjunto-aurora`). Es el valor que viaja en el header `X-Tenant` y que `ITenantDirectory.ResolveSlugAsync` mapea al `Id`. El `Id` (Guid) sigue siendo el `tenant_id` |
+| `Id` | `Guid` | PK. Identificador interno del tenant (ya **no** viaja en un claim; el token es tenant-agnostic) |
+| `Slug` | `string`* | **Único, inmutable, kebab-case** (`^[a-z0-9-]+$`, p. ej. `conjunto-aurora`). Es el valor que viaja en el header `X-Tenant` y que `ITenantDirectory.ResolveSlugAsync` mapea al `Id`. El `Id` (Guid) es el identificador que usan los `ITenantOwned` para scoping |
 | `Name` | `string` | |
 | `LegalId` | `string?` | NIT |
 | `Type` | `enum` | `Conjunto`, `Edificio`, `Mixto` |

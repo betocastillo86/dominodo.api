@@ -76,6 +76,10 @@ builder.Host.UseWolverine(opts =>
     // non-public types). IncludeType bypasses that filter.
     opts.Discovery.AddAdminHandlers();
     opts.Discovery.AddTenantsHandlers();
+    opts.Discovery.AddUsersHandlers();
+
+    // Host-side consumer: evicts the permission-cache entry on any membership change (doc 12).
+    opts.Discovery.IncludeType<Dominodo.Api.Auth.WhenMembershipChanged_InvalidatePermissionCache>();
 
     opts.Policies.UseDurableLocalQueues(); // swap to opts.UseRabbitMq(...) later — handlers unchanged
 });

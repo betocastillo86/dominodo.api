@@ -1,11 +1,13 @@
 using System.Reflection;
 using Dominodo.Users.Application.Abstractions;
+using Dominodo.Users.Application.IntegrationBridges;
 using Dominodo.Users.Application.ModuleApi;
 using Dominodo.Users.Application.Security;
 using Dominodo.Users.Contracts;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Wolverine.Configuration;
 
 namespace Dominodo.Users.Application;
 
@@ -29,5 +31,15 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 
         return services;
+    }
+
+    // Registers this module's Wolverine message handlers explicitly (conventional discovery skips
+    // handlers the host doesn't scan). Called by the host inside UseWolverine. These are the
+    // membership domain→integration bridges.
+    public static void AddUsersHandlers(this HandlerDiscovery discovery)
+    {
+        discovery.IncludeType<WhenMembershipCreated_PublishIntegrationEvent>();
+        discovery.IncludeType<WhenMembershipSuspended_PublishIntegrationEvent>();
+        discovery.IncludeType<WhenMembershipRoleChanged_PublishIntegrationEvent>();
     }
 }

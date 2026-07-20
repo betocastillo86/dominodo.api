@@ -25,10 +25,12 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next)
             ctx.Items[TenantIdKey] = tenantId.Value;
         }
 
-        // TODO (Fase 4 — Membership slice, doc 12): enforce that an authenticated caller may act on
-        // the resolved tenant only if they have a Membership in it. This replaces the old, inert
-        // `tenant_id`-claim reconciliation (that claim was never emitted and assumed one tenant per
-        // token). Cross-tenant authority must be a permission, not a hardcoded role — no IsInRole here.
+        // Tenant access is enforced downstream by permission resolution, not here: [HasPermission] +
+        // CachingPermissionProvider's tenant branch resolve platform ∪ the caller's Active-membership
+        // permissions for the resolved (user, tenant), so a caller with no Active membership (and thus
+        // no tenant permission) fails closed at authorization. Cross-tenant authority is a permission
+        // (SuperAdmin's platform grant), never a hardcoded role — no IsInRole here. A blanket
+        // "must hold SOME membership" gate is intentionally omitted (per-endpoint permissions suffice).
 
         await next(ctx);
     }

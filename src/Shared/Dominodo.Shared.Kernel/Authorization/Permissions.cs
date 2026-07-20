@@ -31,4 +31,7 @@ public static class Permissions
     public const string TenantsCreate = "tenants.create";  // create a new conjunto
     public const string TenantsView = "tenants.view";      // read tenants, apartments, residents, features
     public const string TenantsEdit = "tenants.edit";      // write everything under a conjunto (except create)
+
+    // Membresías
+    public const string MembershipsManage = "memberships.manage";  // invite/manage members inside a conjunto
 }

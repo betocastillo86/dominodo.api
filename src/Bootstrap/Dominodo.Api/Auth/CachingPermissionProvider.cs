@@ -6,8 +6,8 @@ namespace Dominodo.Api.Auth;
 
 // Host-side implementation of the permission port: it may reach the Users module facade (which
 // Shared.Infrastructure cannot). Effective permissions are cached per (userId, tenantId) with a
-// short TTL. The tenant branch is a no-op until the Membership slice lands — today it resolves the
-// user's Platform-scope permissions, which already protects every platform-scoped endpoint.
+// short TTL. When a tenant is resolved, the facade returns platform ∪ tenant-membership permissions;
+// otherwise only the user's Platform-scope permissions resolve.
 // See docs/architecture/12-permission-authorization.md.
 internal sealed class CachingPermissionProvider(
     IUsersModuleApi usersModule,
@@ -15,31 +15,31 @@ internal sealed class CachingPermissionProvider(
 {
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(60);
 
+    // Cache-key builder, shared with the membership-change invalidator so eviction targets the exact key.
+    public static string CacheKey(Guid userId, Guid? tenantId) => $"perm:{userId:N}:{tenantId:N}";
+
     public async Task<IReadOnlySet<string>> GetEffectivePermissionsAsync(
         Guid userId,
         Guid? tenantId,
         CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"perm:{userId:N}:{tenantId:N}";
+        var cacheKey = CacheKey(userId, tenantId);
 
         if (cache.TryGetValue(cacheKey, out IReadOnlySet<string>? cached) && cached is not null)
         {
             return cached;
         }
 
-        var platform = await usersModule.GetPlatformPermissionsAsync(userId, cancellationToken);
+        // With a resolved tenant, the facade returns platform ∪ the user's Active-membership permissions
+        // in that tenant (domain-model §1.8). Without one, only Platform-scope permissions resolve.
+        var codes = tenantId is not null
+            ? await usersModule.GetEffectivePermissionsAsync(userId, tenantId.Value, cancellationToken)
+            : await usersModule.GetPlatformPermissionsAsync(userId, cancellationToken);
 
-        var effective = new HashSet<string>(platform.Select(p => p.Code), StringComparer.Ordinal);
+        var effective = new HashSet<string>(codes.Select(p => p.Code), StringComparer.Ordinal);
 
-        // TODO (Fase 4 — Membership slice, doc 12): when tenantId is present, union the user's
-        // tenant-role permissions via IUsersModuleApi.GetEffectivePermissionsAsync(userId, tenantId).
-        // Blocked: the Membership aggregate does not exist yet, so only Platform permissions resolve.
-        // Once added, `tenantId` here stops being ignored.
-
-        // TODO (Fase 5 — cache invalidation, doc 12): today freshness relies on the short TTL. When
-        // Users publishes RolePermissionsChanged / MembershipChanged integration events, subscribe a
-        // Wolverine handler that evicts the affected keys. IMemoryCache has no evict-by-prefix, so
-        // either track keys per user or move to an IChangeToken-backed entry to invalidate in bulk.
+        // Freshness beyond the TTL is handled by WhenMembershipChanged_InvalidatePermissionCache, which
+        // evicts the exact perm:{userId}:{tenantId} key on membership create/suspend/role-change events.
         var result = (IReadOnlySet<string>)effective;
         cache.Set(cacheKey, result, CacheTtl);
         return result;

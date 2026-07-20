@@ -47,12 +47,15 @@ public static class UsersSeedData
         new(9,  PermissionCodes.SettingsManage,      "Gestionar configuración.",              "Administración"),
         new(10, PermissionCodes.TenantsCreate,       "Crear conjuntos residenciales.",        "Plataforma"),
         new(11, PermissionCodes.TenantsView,         "Ver conjuntos residenciales.",          "Plataforma"),
-        new(12, PermissionCodes.TenantsEdit,         "Editar conjuntos residenciales.",       "Plataforma")
+        new(12, PermissionCodes.TenantsEdit,         "Editar conjuntos residenciales.",       "Plataforma"),
+        new(13, PermissionCodes.MembershipsManage,   "Gestionar membresías de un conjunto.",  "Membresías")
     };
 
-    // SuperAdmin gets every permission.
+    // SuperAdmin gets every permission; Administrador gets memberships.manage for tenant-scoped access.
     public static IReadOnlyList<RolePermission> RolePermissions { get; } =
-        Permissions.Select(p => new RolePermission(SuperAdminRoleId, p.Id)).ToList();
+        Permissions.Select(p => new RolePermission(SuperAdminRoleId, p.Id))
+            .Append(new RolePermission(AdministradorRoleId, 13))
+            .ToList();
 
     // The bootstrap SuperAdmin is assigned the Platform-scope SuperAdmin role via data, not code.
     public static IReadOnlyList<PlatformRoleAssignment> PlatformRoleAssignments { get; } = new List<PlatformRoleAssignment>

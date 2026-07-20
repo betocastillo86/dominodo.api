@@ -21,15 +21,15 @@ The catalog and role mapping already exist in the **Users** module:
 
 ```
 User ──1:N──▶ PlatformRoleAssignment ──N:1──▶ Role ──1:N──▶ RolePermission ──N:1──▶ Permission
-User ──1:N──▶ Membership (tenant-scoped, deferred) ──N:1──▶ Role (Scope=Tenant) ──▶ …
-                                                             Role.Scope ∈ { Platform, Tenant }
+User ──1:N──▶ Membership (tenant-scoped) ──N:1──▶ Role (Scope=Tenant) ──▶ …
+                                                  Role.Scope ∈ { Platform, Tenant }
 ```
 
 - `Permission` is a **catalog entity** with a stable string `Code` (`roles.manage`), a `Description`,
   and a `Group`. It is seeded, not user-created.
 - A `Role` carries `RoleScope` — `Platform` (cross-tenant authority, e.g. `SuperAdmin`) or `Tenant`
   (a role a user holds *within* one conjunto).
-- `PlatformRoleAssignment` grants platform roles (no tenant). `Membership` (deferred) grants a
+- `PlatformRoleAssignment` grants platform roles (no tenant). `Membership` grants a
   tenant role for a specific `(user, tenant)`.
 
 ### Effective permissions = platform (always) ∪ tenant (when scoped)
@@ -38,7 +38,7 @@ User ──1:N──▶ Membership (tenant-scoped, deferred) ──N:1──▶ 
 GetEffectivePermissionsAsync(userId, tenantId?):
     perms  = permissions of the user's Platform-scope roles      # ALWAYS — no tenant needed
     if tenantId is present:
-        perms ∪= permissions of the user's role in that tenant   # Membership (deferred)
+        perms ∪= permissions of the user's ACTIVE-Membership role in that tenant  # Invited/Suspended grant nothing
     return perms                                                 # SuperAdmin's seeded role already holds all
 ```
 
@@ -49,8 +49,10 @@ This is the whole point-1 requirement made concrete:
 - **Tenant permissions require the tenant.** `[HasPermission("requests.manage")]` only passes when the
   permission comes from the caller's Membership in the resolved `X-Tenant`.
 
-Until the Membership slice lands, only the platform branch resolves — which is enough to protect every
-platform-scoped endpoint end to end today.
+Both branches are **active**: the tenant branch resolves through `IUsersModuleApi.GetEffectivePermissionsAsync`
+(platform ∪ the user's Active-membership role in the resolved tenant), so `[HasPermission("memberships.manage")]`
+passes for an `Administrador` with an `Active` membership in that conjunto, and for `SuperAdmin` everywhere via
+its platform grant.
 
 ## Why permissions are not in the JWT
 
@@ -124,10 +126,13 @@ Resolution is split so the hot path stays cheap:
 - **`(userId, tenantId) → roles`** — the per-user, per-tenant slice. Cached under `perm:{userId}:{tenantId}`
   with a short TTL.
 
-First cut: `IMemoryCache` with a short TTL (30–60 s) — simple and correct. Hardening: the Users module
-publishes an integration event when a role's permissions or a Membership change
-(`RolePermissionsChangedIntegrationEvent`, `MembershipChangedIntegrationEvent`); an in-host handler
-evicts the affected cache keys, giving immediate freshness with zero per-request DB cost.
+`IMemoryCache` with a short TTL (60 s) backs the per-`(userId, tenantId)` slice. **Cache eviction on
+membership change is implemented:** the Users module publishes `MembershipCreatedIntegrationEvent` /
+`MembershipSuspendedIntegrationEvent` / `MembershipChangedIntegrationEvent` (role change / reactivation)
+via its Wolverine outbox, and an in-host handler (`WhenMembershipChanged_InvalidatePermissionCache`)
+evicts the exact `perm:{userId}:{tenantId}` key (each event carries `UserId` + `TenantId`), giving
+immediate freshness (~1–2 s) with zero per-request DB cost — no longer relying on the TTL alone. Role-
+permission-change eviction (`RolePermissionsChangedIntegrationEvent`) remains a future addition.
 
 ## SuperAdmin — no role is ever hardcoded
 
@@ -152,8 +157,9 @@ deterministic ids**:
 - Source of truth: `Dominodo.Users.Persistence/Seed/IntegrationTestSeedData.cs`, invoked by
   `IServiceProvider.SeedIntegrationTestDataAsync()` from `Program.cs` (idempotent). The E2E project
   mirrors the ids in `DominodoConstants.IntegrationSeed` (black-box — cannot reference Persistence).
-- Only **Platform** roles are seeded (the only assignment path that resolves permissions today). Tenant
-  (Membership) scenarios are set up from the E2E tests once that slice lands.
+- Only **Platform** roles are seeded here (the turnkey path for `[HasPermission]` IntegrationTests).
+  Tenant (Membership) scenarios are set up explicitly from the E2E tests — invite → accept → act with an
+  `X-Tenant` header — now that the Membership slice has landed.
 - This environment shares the Development database and uses the `dominodo-tests` JWT settings; the E2E
   token minter must match them.
 

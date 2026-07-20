@@ -1,5 +1,6 @@
 using Dominodo.Shared.Kernel;
 using Dominodo.Users.Domain.Authentication;
+using Dominodo.Users.Domain.Memberships;
 using Dominodo.Users.Domain.Roles;
 using Dominodo.Users.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,7 @@ internal sealed class UsersDbContext(DbContextOptions<UsersDbContext> options)
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<PlatformRoleAssignment> PlatformRoleAssignments => Set<PlatformRoleAssignment>();
+    public DbSet<Membership> Memberships => Set<Membership>();
     public DbSet<VerificationCode> VerificationCodes => Set<VerificationCode>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
