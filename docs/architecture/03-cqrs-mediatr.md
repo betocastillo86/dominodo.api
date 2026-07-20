@@ -45,10 +45,11 @@ Every handler returns a `Result`/`Result<T>` — expected failures are values, n
 
 ## A command end to end
 
-Request, validator, and handler are colocated per use case (one folder per feature). All `internal`.
+Request, validator, and handler live together in **one file named after the command/query**
+(`<UseCase>Command.cs` / `<UseCase>Query.cs`), one folder per use case. All `internal`.
 
 ```csharp
-// Dominodo.Pqrs.Application/Pqrs/OpenPqr/OpenPqrCommand.cs
+// Dominodo.Pqrs.Application/Pqrs/OpenPqr/OpenPqrCommand.cs  ← request, validator, and handler all in this file
 internal sealed record OpenPqrCommand(Guid ApartmentId, string Subject, string Body) : ICommand<Guid>;
 
 internal sealed class OpenPqrCommandValidator : AbstractValidator<OpenPqrCommand>
@@ -217,7 +218,7 @@ services.AddTransient(typeof(IPipelineBehavior<,>), typeof(UnitOfWorkBehavior<,>
 
 ## Do / Don't
 
-- **Do** keep one command/query + handler per use case, colocated in a feature folder.
+- **Do** keep the request, validator, and handler in **one file** named after the command/query, one folder per use case.
 - **Do** make requests and handlers `internal`.
 - **Do** let the `UnitOfWorkBehavior` own the transaction; handlers add/modify aggregates and return.
 - **Do** return `Result`/`Result<T>` from every handler.

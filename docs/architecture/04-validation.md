@@ -25,11 +25,11 @@ on business rules.
 
 ## Input validation with FluentValidation
 
-A validator is colocated with its command/query and is `internal`. It only checks the shape of the
-request — never database state, never cross-module facts.
+A validator lives in the **same file** as its command/query and handler (`<UseCase>Command.cs`) and is `internal`.
+It only checks the shape of the request — never database state, never cross-module facts.
 
 ```csharp
-// Dominodo.Pqrs.Application/Pqrs/OpenPqr/OpenPqrCommand.cs
+// Dominodo.Pqrs.Application/Pqrs/OpenPqr/OpenPqrCommand.cs  ← validator lives here alongside the request and handler
 internal sealed class OpenPqrCommandValidator : AbstractValidator<OpenPqrCommand>
 {
     public OpenPqrCommandValidator()

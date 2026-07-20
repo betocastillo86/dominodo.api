@@ -25,18 +25,20 @@ skill scaffolds the whole slice so the controller stays a thin adapter over the 
 
 ## Steps
 
-All application types are `internal`. Colocate the request, validator, and handler in one feature
-folder: `Dominodo.<Module>.Application/<Aggregate>/<UseCase>/`.
+All application types are `internal`. Create **one file** named after the command/query inside the
+use-case folder: `Dominodo.<Module>.Application/<Aggregate>/<UseCase>/<UseCase>Command.cs`
+(or `<UseCase>Query.cs`). That single file holds the request, the validator (if any), and the handler,
+in this order:
 
-1. **Request record** — `internal sealed record <Name>Command(...) : ICommand<TResponse>` (or
+1. Consolidated `using` directives (System first, then alphabetical).
+2. File-scoped `namespace ...;`.
+3. **Request record** — `internal sealed record <Name>Command(...) : ICommand<TResponse>` (or
    `: ICommand` for no payload, or `: IQuery<TResponse>`). Response types: commands typically return
    an id or nothing; queries return a DTO shaped for the caller.
-
-2. **Validator** — `internal sealed class <Name>CommandValidator : AbstractValidator<<Name>Command>`
+4. **Validator** (omit for queries or commands with no input to validate) — `internal sealed class <Name>CommandValidator : AbstractValidator<<Name>Command>`
    with `RuleFor` rules. The `ValidationBehavior` runs it automatically; it short-circuits with a
    validation `Result` (it does not throw).
-
-3. **Handler** — `internal sealed class <Name>CommandHandler(...) : ICommandHandler<<Name>Command, TResponse>`:
+5. **Handler** — `internal sealed class <Name>CommandHandler(...) : ICommandHandler<<Name>Command, TResponse>`:
    - Constructor-inject the domain-owned repository/port, `ITenantContext`, and any other module's
      `IModuleApi` (from its `Contracts`) needed for a cross-module **read**.
    - Return `Result`/`Result<T>` — expected failures are `Error` values, not exceptions.
@@ -51,17 +53,17 @@ folder: `Dominodo.<Module>.Application/<Aggregate>/<UseCase>/`.
    - Cross-module write → publish an integration event from `Contracts` (never dispatch another
      module's request; never touch its schema).
 
-4. **DTO** — if the shape is internal to the module, keep it in `Application`. If another module
+6. **DTO** — if the shape is internal to the module, keep it in `Application`. If another module
    consumes it (via the facade or an event), put it in `Contracts`.
 
-5. **Controller action** — a thin action in a controller in the module's **`Dominodo.<Module>.Api`**
+7. **Controller action** — a thin action in a controller in the module's **`Dominodo.<Module>.Api`**
    project (namespace `Dominodo.<Module>.Api.Controllers`, hosted by `Dominodo.Api`) that binds the
    request, sends it via `ISender` (MediatR), and maps the `Result` to an HTTP response / ProblemDetails
    via `ErrorResults.ToProblem` (from `Shared.Infrastructure.Http`). No business logic in the controller.
    The controller can build the `internal` command/query because `*.Application` grants
    `InternalsVisibleTo` to `*.Api`. If the module has no controller for this aggregate yet, add one.
 
-6. **Tests — opt-in only.** Do **not** generate tests as part of this slice. Ship the code without any
+8. **Tests — opt-in only.** Do **not** generate tests as part of this slice. Ship the code without any
    unit/integration/E2E tests **unless the user explicitly asked for them** in this request. If they did,
    write only the cases they named, following `docs/architecture/10-testing.md` (unit → `Dominodo.<Module>.UnitTests`,
    integration → `Dominodo.<Module>.IntegrationTests`, both created on first need; E2E → the separate

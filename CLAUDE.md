@@ -88,7 +88,7 @@ The full index and solution map is in `docs/architecture/README.md`.
   the aggregate) and are handled async by in-module **Wolverine** handlers. See `docs/architecture/07`.
 - Cross-module read → call the other module's `IModuleApi` from its `Contracts`. Cross-module write
   → publish an integration event. Never reference another module's non-`Contracts` project.
-- One command/query + validator + handler per use case, colocated in a feature folder.
+- One command/query + validator + handler per use case, in a **single file** named after the command/query, one folder per use case.
 - **Tests are opt-in.** Never generate tests as a side effect of a feature, prompt, or refactor. Write
   unit/integration/E2E tests **only when explicitly asked**, and only for the cases named. Architecture
   tests (`Dominodo.ArchitectureTests`) are the sole exception — always maintained. See `docs/architecture/10-testing.md`.
