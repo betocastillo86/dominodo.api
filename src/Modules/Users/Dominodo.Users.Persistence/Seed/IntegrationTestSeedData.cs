@@ -44,30 +44,36 @@ public static class IntegrationTestSeedData
         Guid UserId,
         Guid MembershipId);
 
-    // Derived from UsersSeedData.Permissions so codes/ids never drift. Deterministic id scheme:
-    //   RoleId       = 1000 + permissionId              (1001..; clear of system roles 1-5)
+    // Role ids live in a RESERVED NEGATIVE range. Dynamically-created roles (CreateRoleCommand) get
+    // `MAX(Id) + 1`, an ever-climbing POSITIVE value, so a fixed positive fixture id (the old 1000+/2000+
+    // scheme) eventually collides with a test-created role that grabbed it first — leaving the fixture
+    // user assigned to the wrong role. A negative id is provably unreachable by `MAX(Id) + 1`, so the
+    // fixtures can never collide with dynamic roles, now or for any future permission. The seeder
+    // reconciles legacy positive rows on the shared dev DB (see SeedIntegrationTestDataAsync).
+    // Deterministic id scheme (RoleId negated; Guids unchanged so the E2E mirror stays valid):
+    //   RoleId       = -(1000 + permissionId)            (-1001..; reserved negative range)
     //   UserId       = 00000000-0000-0000-0000-0000000010NN   (NN = permissionId, 2 digits)
     //   AssignmentId = 00000000-0000-0000-0000-0000000020NN
     public static IReadOnlyList<Fixture> Fixtures { get; } = UsersSeedData.Permissions
         .Select(p => new Fixture(
             PermissionCode: p.Code,
             PermissionId: p.Id,
-            RoleId: 1000 + p.Id,
+            RoleId: -(1000 + p.Id),
             RoleName: ToPascalCase(p.Code),
             UserId: Guid.Parse($"00000000-0000-0000-0000-0000000010{p.Id:D2}"),
             AssignmentId: Guid.Parse($"00000000-0000-0000-0000-0000000020{p.Id:D2}")))
         .ToList();
 
-    // The Tenant-scope counterpart of Fixtures. Distinct id scheme so it never collides with the platform
-    // fixtures (or system roles 1-5):
-    //   RoleId       = 2000 + permissionId              (2001..)
+    // The Tenant-scope counterpart of Fixtures. Distinct negative band so it never collides with the
+    // platform fixtures (or system roles 1-5, or dynamic roles):
+    //   RoleId       = -(2000 + permissionId)            (-2001..)
     //   UserId       = 00000000-0000-0000-0000-0000000011NN   (NN = permissionId, 2 digits)
     //   MembershipId = 00000000-0000-0000-0000-0000000031NN
     public static IReadOnlyList<TenantFixture> TenantFixtures { get; } = UsersSeedData.Permissions
         .Select(p => new TenantFixture(
             PermissionCode: p.Code,
             PermissionId: p.Id,
-            RoleId: 2000 + p.Id,
+            RoleId: -(2000 + p.Id),
             RoleName: $"{ToPascalCase(p.Code)}Tenant",
             UserId: Guid.Parse($"00000000-0000-0000-0000-0000000011{p.Id:D2}"),
             MembershipId: Guid.Parse($"00000000-0000-0000-0000-0000000031{p.Id:D2}")))
@@ -142,9 +148,9 @@ public static class IntegrationTestSeedData
 
     // "Rol Public": a Platform-scope role carrying ZERO permissions, plus a user assigned to it, so a test
     // can mint a token for a permission-less user and assert a [HasPermission(code)] endpoint returns 403.
-    // Fixed ids chosen clear of every other scheme (system roles 1-5, per-permission roles 1001+, their
-    // users ...10NN / assignments ...20NN). Uses NN=00 slots, which the per-permission scheme never emits.
-    public const int PublicRoleId = 900;
+    // Negative id, clear of every other scheme (system roles 1-5, dynamic roles, per-permission fixtures
+    // -1001../-2001..). Its user/assignment Guids use the NN=00 slots the per-permission scheme never emits.
+    public const int PublicRoleId = -900;
     public const string PublicRoleName = "Rol Public";
     public static readonly Guid PublicUserId = Guid.Parse("00000000-0000-0000-0000-000000001000");
     public static readonly Guid PublicAssignmentId = Guid.Parse("00000000-0000-0000-0000-000000002000");

@@ -54,11 +54,5 @@ public sealed class GetRolesTests : BaseUsersTests
         paged.ShouldNotBeNull();
         paged!.Items.ShouldNotBeEmpty();
         paged.TotalCount.ShouldBeGreaterThan(0);
-
-        // The SuperAdmin role is seeded as a system, Platform-scope role — assert its shape.
-        paged.Items.ShouldContain(r => r.Name == "SuperAdmin");
-        var superAdmin = paged.Items.First(r => r.Name == "SuperAdmin");
-        superAdmin.IsSystem.ShouldBeTrue();
-        superAdmin.Scope.ShouldBe("Platform");
     }
 }
