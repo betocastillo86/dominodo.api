@@ -62,4 +62,17 @@ public interface IUsersClient
     [Get("/api/v1/permissions")]
     Task<ApiResponse<IReadOnlyList<PermissionModel>>> GetPermissions(
         [Authorize("Bearer")] string? token = null);
+
+    // Memberships (tenant-scoped) — MembershipsController.List. The explicit [Header("X-Tenant")] param
+    // controls the resolved tenant per call (a null value omits the header); it takes precedence over the
+    // ambient TenantHeaderHandler.
+    //
+    // Guarded by [HasPermission(Permissions.MembershipsManage)]: anonymous ⇒ 401, authenticated without the
+    // permission (resolved for the tenant) ⇒ 403, with it (platform grant or Active membership) ⇒ 200.
+    [Get("/api/v1/memberships")]
+    Task<ApiResponse<PagedResultModel<MembershipModel>>> GetMemberships(
+        [Query] int page = 1,
+        [Query] int pageSize = 20,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
 }

@@ -100,9 +100,22 @@ inherited `JwtTokenFactory`, `Faker`, `Fixture`). Structure every test **Arrange
 - **Assert** on `StatusCode`, `Content`, and/or the `ProblemDetailsModel` via
   `ShouldHaveValidationError(prop)` / `ShouldHaveErrorCode(code)`.
 
-Auth in Act: `JwtTokenFactory.CreateSuperAdminToken()` for an authorized call; a plain
-`CreateUserToken(Guid.NewGuid(), "SomeRole")` for a token that lacks a permission (→ 403); no token
-(null) for 401.
+Auth in Act — use the API's **seeded fixture users** (the IntegrationTests seed materialises, per catalog
+permission, one **Platform** user and one **Tenant** user carrying exactly that permission; plus one
+zero-permission user). **Never hardcode role/user ids, never special-case the bootstrap SuperAdmin.**
+- **200, platform grant** → `JwtTokenFactory.GenerateToken(code)` (mints the seeded Platform user for `code`).
+- **200, tenant grant** → `JwtTokenFactory.GenerateTenantToken(code)` + send `X-Tenant:
+  DominodoConstants.IntegrationSeed.TenantSlug` (the seeded user's only grant is an Active membership there).
+- **403 lacks permission** → `GeneratePublicToken()` (a real user assigned a zero-permission Platform role).
+- **401** → no token (null).
+- **403 wrong tenant** (isolation) → a tenant-scoped token targeting a *different* valid tenant (create one
+  via `TenantsRequestBuilder.CreateTenantAsync()`). Note an **unknown** slug is **400 `Tenant.Unknown`** (the
+  resolution middleware), not 403.
+
+If a case doesn't fit a seeded fixture, **create a fresh user + role with that permission through the APIs**
+(`POST /roles`, register) rather than hardcoding ids or inserting permission rows via dev-SQL. When you add a
+brand-new permission, extend the mirror maps in `DominodoConstants.IntegrationSeed` (`UserIdFor` /
+`TenantUserIdFor`) by hand.
 
 ```csharp
 // File: tests/e2e/tests/Dominodo.E2E.Tests.Users/Roles/GetRolesTests.cs
@@ -120,14 +133,14 @@ public sealed class GetRolesTests : BaseUsersTests
     [Test]
     public async Task _403_WhenUserLacksManageRoles()
     {
-        var token = JwtTokenFactory.CreateUserToken(Guid.NewGuid());       // valid, no role/permission
+        var token = JwtTokenFactory.GeneratePublicToken();                 // real user, zero permissions
         var response = await UsersClient.GetRoles(token: token);
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
     [Test]
     public async Task _400_WhenPaginationInvalid()
     {
-        var token = JwtTokenFactory.CreateSuperAdminToken();
+        var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.RolesManage);
         var response = await UsersClient.GetRoles(page: 0, pageSize: -1, token: token);
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         response.ShouldHaveErrorCode("Validation.Failed");
@@ -135,7 +148,7 @@ public sealed class GetRolesTests : BaseUsersTests
     [Test]
     public async Task _200_ReturnsRoles()
     {
-        var token = JwtTokenFactory.CreateSuperAdminToken();
+        var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.RolesManage);
         var response = await UsersClient.GetRoles(token: token);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         response.Content!.Items.ShouldNotBeEmpty();

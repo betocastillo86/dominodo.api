@@ -63,8 +63,9 @@ public static class DependencyInjection
         await db.Database.MigrateAsync(ct);
     }
 
-    // IntegrationTests-only: seeds a Platform role + user + assignment per permission (fixed ids) so tests can
-    // authenticate as a user carrying exactly one permission. Public entry point so the host can invoke it
+    // IntegrationTests-only: per permission seeds a Platform role + user + assignment AND a Tenant role +
+    // user + Active membership (fixed ids) so tests can authenticate as a user carrying exactly one
+    // permission via either the platform or the tenant branch. Public entry point so the host can invoke it
     // without UsersDbContext leaving the assembly. Idempotent: each row is added only if its id is absent.
     // Writes directly with SaveChangesAsync (not the Wolverine unit of work) — this is reference data, so no
     // outbox/domain-event dispatch should occur.
@@ -88,6 +89,26 @@ public static class DependencyInjection
             if (!await db.PlatformRoleAssignments.AnyAsync(a => a.Id == fixture.AssignmentId, ct))
             {
                 db.PlatformRoleAssignments.Add(IntegrationTestSeedData.BuildAssignment(fixture));
+            }
+        }
+
+        // Tenant-scope counterpart of the loop above: a Tenant role + user + Active membership per permission,
+        // so tests can exercise the tenant branch of permission resolution (token + X-Tenant header).
+        foreach (var fixture in IntegrationTestSeedData.TenantFixtures)
+        {
+            if (!await db.Roles.AnyAsync(r => r.Id == fixture.RoleId, ct))
+            {
+                db.Roles.Add(IntegrationTestSeedData.BuildTenantRole(fixture));
+            }
+
+            if (!await db.Users.AnyAsync(u => u.Id == fixture.UserId, ct))
+            {
+                db.Users.Add(IntegrationTestSeedData.BuildTenantUser(fixture));
+            }
+
+            if (!await db.Memberships.AnyAsync(m => m.Id == fixture.MembershipId, ct))
+            {
+                db.Memberships.Add(IntegrationTestSeedData.BuildMembership(fixture));
             }
         }
 

@@ -28,6 +28,20 @@ public sealed class Membership : AggregateRoot, ITenantOwned
     public DateTimeOffset? InvitedAtUtc { get; private set; }
     public DateTimeOffset? JoinedAtUtc { get; private set; }
 
+    // Deterministic, event-free factory for seed/test fixtures only — mirrors User.CreateSeed and
+    // PlatformRoleAssignment.AssignWithId. Takes a fixed id, starts Active (so it grants tenant-scope
+    // permissions immediately), and raises NO domain event.
+    public static Membership CreateSeed(Guid id, Guid userId, Guid tenantId, int roleId, DateTimeOffset joinedAtUtc)
+    {
+        var membership = new Membership(id, userId, tenantId, roleId, joinedAtUtc)
+        {
+            Status = MembershipStatus.Active,
+            JoinedAtUtc = joinedAtUtc,
+        };
+
+        return membership;
+    }
+
     public static Result<Membership> Invite(Guid userId, Guid tenantId, int roleId, DateTimeOffset nowUtc)
     {
         if (userId == Guid.Empty)

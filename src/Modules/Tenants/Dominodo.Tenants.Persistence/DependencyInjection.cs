@@ -1,6 +1,7 @@
 using Dominodo.Shared.Infrastructure.Persistence;
 using Dominodo.Shared.Kernel;
 using Dominodo.Tenants.Domain.Ports;
+using Dominodo.Tenants.Domain.Tenants;
 using Dominodo.Tenants.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,5 +56,34 @@ public static class DependencyInjection
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<TenantsDbContext>();
         await db.Database.MigrateAsync(ct);
+    }
+
+    // IntegrationTests-only: seeds the fixed Active tenant that the Users module's Tenant-scope permission
+    // fixtures hold memberships in, so X-Tenant: integration-test resolves it. Id + slug MUST match
+    // Users' IntegrationTestSeedData.IntegrationTenantId / IntegrationTenantSlug. Idempotent.
+    // Writes directly with SaveChangesAsync (reference data — no outbox/domain-event dispatch).
+    public static async Task SeedIntegrationTestTenantAsync(this IServiceProvider services, CancellationToken ct = default)
+    {
+        var tenantId = Guid.Parse("00000000-0000-0000-0000-0000000000E2");
+        const string slug = "integration-test";
+
+        await using var scope = services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<TenantsDbContext>();
+
+        if (await db.Tenants.AnyAsync(t => t.Id == tenantId, ct))
+        {
+            return;
+        }
+
+        db.Tenants.Add(Tenant.CreateSeed(
+            tenantId,
+            slug,
+            name: "Integration Test",
+            type: TenantType.Conjunto,
+            address: "Integration Ave 1",
+            city: "Bogotá",
+            country: "CO"));
+
+        await db.SaveChangesAsync(ct);
     }
 }

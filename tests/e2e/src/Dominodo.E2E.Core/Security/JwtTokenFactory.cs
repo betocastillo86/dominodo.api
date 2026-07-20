@@ -57,6 +57,18 @@ public sealed class JwtTokenFactory(JwtSettings settings)
     }
 
     /// <summary>
+    /// Mints a token for the seeded <b>tenant</b> user that carries <paramref name="permission"/> — a user
+    /// whose only grant is an Active membership (in <see cref="DominodoConstants.IntegrationSeed.TenantSlug"/>)
+    /// on a Tenant-scope role. The permission resolves only through the tenant branch, so the caller must
+    /// send <c>X-Tenant: {TenantSlug}</c>. Counterpart of <see cref="GenerateToken"/> (Platform scope).
+    /// </summary>
+    public string GenerateTenantToken(string permission)
+    {
+        var userId = DominodoConstants.IntegrationSeed.TenantUserIdFor(permission);
+        return CreateUserToken(userId);
+    }
+
+    /// <summary>
     /// Mints a token for the seeded "Rol Public" user — a real user assigned to a Platform role that
     /// carries zero permissions. Use to assert a <c>[HasPermission(code)]</c> endpoint returns 403 for a
     /// user that exists but lacks the permission (distinct from a token for an unknown user id).

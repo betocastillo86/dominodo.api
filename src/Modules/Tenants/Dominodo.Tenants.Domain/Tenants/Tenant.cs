@@ -82,6 +82,23 @@ public sealed partial class Tenant : AggregateRoot
         return tenant;
     }
 
+    // Deterministic, event-free factory for seed/test fixtures only — mirrors User.CreateSeed. Takes a
+    // fixed id and starts Active, so ITenantDirectory resolves the slug immediately. Raises NO domain event.
+    public static Tenant CreateSeed(
+        Guid id,
+        string slug,
+        string name,
+        TenantType type,
+        string address,
+        string city,
+        string country)
+    {
+        return new Tenant(id, slug, name, type, address, city, country, legalId: null)
+        {
+            Status = TenantStatus.Active,
+        };
+    }
+
     public Result Rename(string name)
     {
         if (string.IsNullOrWhiteSpace(name))

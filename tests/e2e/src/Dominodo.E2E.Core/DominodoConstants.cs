@@ -34,6 +34,7 @@ public static class DominodoConstants
         public const string TenantsCreate       = "tenants.create";
         public const string TenantsView         = "tenants.view";
         public const string TenantsEdit         = "tenants.edit";
+        public const string MembershipsManage   = "memberships.manage";
     }
 
     public static class Defaults
@@ -64,12 +65,45 @@ public static class DominodoConstants
             ["tenants.create"]       = Guid.Parse("00000000-0000-0000-0000-000000001010"),
             ["tenants.view"]         = Guid.Parse("00000000-0000-0000-0000-000000001011"),
             ["tenants.edit"]         = Guid.Parse("00000000-0000-0000-0000-000000001012"),
+            ["memberships.manage"]   = Guid.Parse("00000000-0000-0000-0000-000000001013"),
         };
 
         public static Guid UserIdFor(string permission) =>
             _userIdByPermission.TryGetValue(permission, out var id)
                 ? id
                 : throw new ArgumentException($"No seeded user for permission '{permission}'.", nameof(permission));
+
+        // Tenant-scope counterpart of the map above: per permission a user whose ONLY grant is an Active
+        // membership (in TenantSlug) on a Tenant-scope role carrying that permission. Mint a token via
+        // GenerateToken(permission)/CreateUserToken(id), send X-Tenant: TenantSlug, and hit the endpoint —
+        // the permission resolves only through the tenant branch. Must match
+        // IntegrationTestSeedData.TenantFixtures (UserId = 00000000-0000-0000-0000-0000000011NN).
+        private static readonly Dictionary<string, Guid> _tenantUserIdByPermission = new()
+        {
+            ["users.manage"]         = Guid.Parse("00000000-0000-0000-0000-000000001101"),
+            ["roles.manage"]         = Guid.Parse("00000000-0000-0000-0000-000000001102"),
+            ["requests.create"]      = Guid.Parse("00000000-0000-0000-0000-000000001103"),
+            ["requests.manage"]      = Guid.Parse("00000000-0000-0000-0000-000000001104"),
+            ["deliveries.register"]  = Guid.Parse("00000000-0000-0000-0000-000000001105"),
+            ["deliveries.manage"]    = Guid.Parse("00000000-0000-0000-0000-000000001106"),
+            ["visits.register"]      = Guid.Parse("00000000-0000-0000-0000-000000001107"),
+            ["announcements.manage"] = Guid.Parse("00000000-0000-0000-0000-000000001108"),
+            ["settings.manage"]      = Guid.Parse("00000000-0000-0000-0000-000000001109"),
+            ["tenants.create"]       = Guid.Parse("00000000-0000-0000-0000-000000001110"),
+            ["tenants.view"]         = Guid.Parse("00000000-0000-0000-0000-000000001111"),
+            ["tenants.edit"]         = Guid.Parse("00000000-0000-0000-0000-000000001112"),
+            ["memberships.manage"]   = Guid.Parse("00000000-0000-0000-0000-000000001113"),
+        };
+
+        public static Guid TenantUserIdFor(string permission) =>
+            _tenantUserIdByPermission.TryGetValue(permission, out var id)
+                ? id
+                : throw new ArgumentException($"No seeded tenant user for permission '{permission}'.", nameof(permission));
+
+        // The fixed Active tenant those memberships live in. Must match
+        // IntegrationTestSeedData.IntegrationTenantId / IntegrationTenantSlug (and the Tenants module seed).
+        public const string TenantSlug = "integration-test";
+        public static readonly Guid TenantId = Guid.Parse("00000000-0000-0000-0000-0000000000E2");
 
         // "Rol Public": a seeded user assigned to a Platform role carrying ZERO permissions. Mint a token
         // via JwtTokenFactory.GeneratePublicToken() to assert a [HasPermission(code)] endpoint returns 403

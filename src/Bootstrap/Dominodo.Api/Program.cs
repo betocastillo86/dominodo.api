@@ -116,6 +116,8 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Integratio
 // authenticate as a user carrying exactly one permission. Runtime-gated (never baked into migrations).
 if (app.Environment.IsEnvironment("IntegrationTests"))
 {
+    // The tenant must exist before the Users memberships reference it (X-Tenant slug resolution).
+    await app.Services.SeedIntegrationTestTenantAsync();
     await app.Services.SeedIntegrationTestDataAsync();
 }
 

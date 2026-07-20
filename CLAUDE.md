@@ -100,6 +100,8 @@ The full index and solution map is in `docs/architecture/README.md`.
   `.editorconfig` (`csharp_prefer_braces = true` / `IDE0011`) with `EnforceCodeStyleInBuild` +
   `TreatWarningsAsErrors`, so a violation **breaks the build**. Run `dotnet format analyzers --diagnostics IDE0011`
   to fix mechanically.
+- **Comment sparingly.** Add a comment only for non-obvious *why* — complicated logic, a workaround, a
+  subtle invariant.
 
 ## Naming conventions
 
