@@ -13,16 +13,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace Dominodo.Tenants.Api.Controllers;
 
 // Resident↔apartment links (domain-model §2.4). Tenant-scoped: every endpoint REQUIRES the X-Tenant
-// header. Reads are gated by tenants.view, writes by tenants.edit (per-action). Residents are mutated
-// through the Apartment aggregate, so all routes hang off an apartment.
+// header. Reads are gated by apartments.view; writes (assign, end, remove) are gated by apartments.edit.
+// Residents are mutated through the Apartment aggregate, so all routes hang off an apartment.
 [ApiController]
 [Produces("application/json")]
 [Route("api/v{version:apiVersion}/apartments/{apartmentId:guid}/residents")]
 public sealed class ApartmentResidentsController(ISender sender) : ControllerBase
 {
     [HttpGet(Name = "GetApartmentResidents")]
-    [HasPermission(Permissions.TenantsView)]
-    [EndpointSummary("Lists the residents of an apartment (within the current tenant).")]
+    [HasPermission(Permissions.ApartmentsView)]
+    [EndpointSummary("Lists the residents of an apartment (within the current tenant). Requires the apartments.view permission.")]
     [ProducesResponseType(typeof(IReadOnlyList<ResidentDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IResult> List(Guid apartmentId, CancellationToken ct)
@@ -32,8 +32,8 @@ public sealed class ApartmentResidentsController(ISender sender) : ControllerBas
     }
 
     [HttpPost]
-    [HasPermission(Permissions.TenantsEdit)]
-    [EndpointSummary("Assigns a resident (owner/renter) to an apartment. Requires the tenants.edit permission.")]
+    [HasPermission(Permissions.ApartmentsEdit)]
+    [EndpointSummary("Assigns a resident (owner/renter) to an apartment. Requires the apartments.edit permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -56,8 +56,8 @@ public sealed class ApartmentResidentsController(ISender sender) : ControllerBas
     }
 
     [HttpPut("{residentId:guid}/end")]
-    [HasPermission(Permissions.TenantsEdit)]
-    [EndpointSummary("Ends an active residency (keeps history). Requires the tenants.edit permission.")]
+    [HasPermission(Permissions.ApartmentsEdit)]
+    [EndpointSummary("Ends an active residency (keeps history). Requires the apartments.edit permission.")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -69,8 +69,8 @@ public sealed class ApartmentResidentsController(ISender sender) : ControllerBas
     }
 
     [HttpDelete("{residentId:guid}")]
-    [HasPermission(Permissions.TenantsEdit)]
-    [EndpointSummary("Removes a residency row entirely. Requires the tenants.edit permission.")]
+    [HasPermission(Permissions.ApartmentsEdit)]
+    [EndpointSummary("Removes a residency row entirely. Requires the apartments.edit permission.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IResult> Remove(Guid apartmentId, Guid residentId, CancellationToken ct)

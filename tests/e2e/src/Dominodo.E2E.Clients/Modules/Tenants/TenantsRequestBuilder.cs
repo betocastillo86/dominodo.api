@@ -257,8 +257,53 @@ public sealed class TenantsRequestBuilder(
     }
 
     /// <summary>
+    /// Builds a valid <see cref="AssignResidentModel"/> (default relation "Owner", lives here). When
+    /// <paramref name="userId"/> is omitted a random Guid is used — fine for validation cases; supply a real
+    /// user id for a request that must reach the handler. Does NOT call the API.
+    /// </summary>
+    public AssignResidentModel BuildAssignResidentModel(
+        Guid? userId = null,
+        string relationType = "Owner",
+        bool livesHere = true,
+        DateOnly? startDate = null)
+    {
+        return new AssignResidentModel
+        {
+            UserId = userId ?? Guid.NewGuid(),
+            RelationType = relationType,
+            LivesHere = livesHere,
+            StartDate = startDate,
+        };
+    }
+
+    /// <summary>
+    /// Builds a valid <see cref="EndResidencyModel"/> (defaults <c>EndDate</c> to a fixed, past-safe date).
+    /// Any field is overridable via <c>model with { ... }</c>. Does NOT call the API.
+    /// </summary>
+    public EndResidencyModel BuildEndResidencyModel(DateOnly? endDate = null)
+    {
+        return new EndResidencyModel
+        {
+            EndDate = endDate ?? new DateOnly(2030, 1, 1),
+        };
+    }
+
+    /// <summary>
+    /// Self-completing Arrange for the <c>AssignResident</c> endpoint's Act: provisions an apartment (and its
+    /// tenant when <paramref name="tenantSlug"/> is omitted) plus a freshly registered, <b>not-yet-assigned</b>
+    /// user, so the test's single Act is the <c>AssignResident</c> call itself. Returns the resolved slug,
+    /// apartment id and candidate user id. Throws on any non-success step.
+    /// </summary>
+    public async Task<ApartmentWithCandidate> CreateApartmentWithCandidateAsync(string? tenantSlug = null)
+    {
+        var apartment = await CreateApartmentAsync(tenantSlug);
+        var user = await _users.RegisterUserAsync();
+        return new ApartmentWithCandidate(apartment.TenantSlug, apartment.Id, user.Id);
+    }
+
+    /// <summary>
     /// Full Arrange: assigns <paramref name="userId"/> as an active resident of the apartment using a Platform
-    /// <c>tenants.edit</c> token (cross-tenant, so it works for any resolved tenant), scoped by
+    /// <c>apartments.edit</c> token (cross-tenant, so it works for any resolved tenant), scoped by
     /// <paramref name="tenantSlug"/>. The user must already exist in Users. Returns the created resident id.
     /// Throws on non-success so a broken Arrange aborts the test.
     /// </summary>
@@ -270,14 +315,8 @@ public sealed class TenantsRequestBuilder(
         bool livesHere = true,
         DateOnly? startDate = null)
     {
-        var editToken = _jwtTokenFactory.GenerateToken(DominodoConstants.Permission.TenantsEdit);
-        var model = new AssignResidentModel
-        {
-            UserId = userId,
-            RelationType = relationType,
-            LivesHere = livesHere,
-            StartDate = startDate,
-        };
+        var editToken = _jwtTokenFactory.GenerateToken(DominodoConstants.Permission.ApartmentsEdit);
+        var model = BuildAssignResidentModel(userId, relationType, livesHere, startDate);
 
         var response = await _tenants.AssignResident(apartmentId, model, tenantSlug, editToken);
         if (!response.IsSuccessStatusCode)

@@ -18,3 +18,10 @@ public sealed record CreatedApartment(string TenantSlug, ApartmentDetailModel Ap
 /// <c>JwtTokenFactory.CreateUserToken(UserId)</c>), and the created residency id.
 /// </summary>
 public sealed record CreatedResident(string TenantSlug, Guid ApartmentId, Guid UserId, Guid ResidentId);
+
+/// <summary>
+/// Result of <see cref="TenantsRequestBuilder.CreateApartmentWithCandidateAsync"/>: an apartment and a
+/// freshly registered user that is NOT yet a resident of it — the exact preconditions for a clean
+/// <c>AssignResident</c> Act. Carries the resolved tenant slug, the apartment id and the candidate user id.
+/// </summary>
+public sealed record ApartmentWithCandidate(string TenantSlug, Guid ApartmentId, Guid UserId);

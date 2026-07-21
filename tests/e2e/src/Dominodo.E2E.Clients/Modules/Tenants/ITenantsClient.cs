@@ -107,12 +107,39 @@ public interface ITenantsClient
         [Header("X-Tenant")] string? tenant = null,
         [Authorize("Bearer")] string? token = null);
 
-    // ApartmentResidentsController.Assign, guarded by [HasPermission(Permissions.TenantsEdit)] and scoped by
+    // ApartmentResidentsController.List, guarded by [HasPermission(Permissions.ApartmentsView)] and scoped by
+    // X-Tenant. Returns the apartment's residents (plain list, not paged). Unknown apartment ⇒ 404.
+    [Get("/api/v1/apartments/{apartmentId}/residents")]
+    Task<ApiResponse<IReadOnlyList<ResidentModel>>> GetApartmentResidents(
+        Guid apartmentId,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // ApartmentResidentsController.Assign, guarded by [HasPermission(Permissions.ApartmentsEdit)] and scoped by
     // X-Tenant. Success is 201 Created ({ id }). The referenced user must exist in Users (cross-module facade).
     [Post("/api/v1/apartments/{apartmentId}/residents")]
     Task<ApiResponse<CreatedModel>> AssignResident(
         Guid apartmentId,
         [Body] AssignResidentModel model,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // ApartmentResidentsController.End, guarded by [HasPermission(Permissions.ApartmentsEdit)] and scoped by
+    // X-Tenant. Success is 204 NoContent. Unknown apartment/residency ⇒ 404; an already-ended residency ⇒ 409.
+    [Put("/api/v1/apartments/{apartmentId}/residents/{residentId}/end")]
+    Task<ApiResponse<object>> EndResident(
+        Guid apartmentId,
+        Guid residentId,
+        [Body] EndResidencyModel model,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // ApartmentResidentsController.Remove, guarded by [HasPermission(Permissions.ApartmentsEdit)] and scoped
+    // by X-Tenant. Hard-deletes the residency row. Success is 204 NoContent; unknown apartment/residency ⇒ 404.
+    [Delete("/api/v1/apartments/{apartmentId}/residents/{residentId}")]
+    Task<ApiResponse<object>> RemoveResident(
+        Guid apartmentId,
+        Guid residentId,
         [Header("X-Tenant")] string? tenant = null,
         [Authorize("Bearer")] string? token = null);
 }
