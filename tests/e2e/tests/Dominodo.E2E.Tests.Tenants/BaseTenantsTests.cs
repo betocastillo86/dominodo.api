@@ -10,6 +10,8 @@ public abstract class BaseTenantsTests : BaseE2ETests
     // the builder drives the Arrange.
     protected ITenantsClient TenantsClient => ServiceProvider.GetRequiredService<ITenantsClient>();
 
+    // Composes apartment/resident Arrange end to end (creating tenants and users as needed via the real
+    // APIs), so tests never hand-roll cross-module setup.
     protected TenantsRequestBuilder TenantsRequestBuilder =>
         ServiceProvider.GetRequiredService<TenantsRequestBuilder>();
 }

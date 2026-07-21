@@ -91,6 +91,21 @@ Task<ApiResponse<PagedResultModel<RoleModel>>> GetRoles(
 helpers (e.g. `CreateUserAndAuthenticateAsync`) build on the model overloads. Register the builder in
 `ClientsServiceRegister.Add<Module>Client()`.
 
+## Step 5a — Self-completing Arrange (push complexity INTO the builder)
+
+Composite `Create<Noun>Async` helpers take **every dependency as an optional param (`null` default)** and
+create only what the caller omitted — top-down (tenant → apartment → user → link), each filled by its own
+helper (`tenantSlug ??= (await CreateTenantAsync()).Slug`). This is the Pollaya
+`OrdersRequestBuilder.CreateOrder`/`SetupNewOrderModel` pattern. Rules:
+- Cross-module deps: inject the sibling builder (e.g. `UsersRequestBuilder` into `TenantsRequestBuilder`;
+  DI-registered, no cycle) so the helper registers the user itself.
+- Return a small **result record** with the ids/slugs a fresh dependency would hide, e.g.
+  `CreatedResident(TenantSlug, ApartmentId, UserId, ResidentId)`. Still throws on any non-success step.
+
+Payoff — the whole Arrange is one line: `var resident = await TenantsRequestBuilder.CreateResidentAsync();`
+(builds tenant+apartment+user+residency), while `CreateResidentAsync(userId: mine)` reuses just that user.
+**Always prefer growing these helpers over adding Arrange lines to tests.**
+
 ## Step 6 — The test class
 
 `<Verb><Noun>Tests : Base<Module>Tests` (which exposes `<Module>Client`, `<Module>RequestBuilder`, and
@@ -187,6 +202,9 @@ test per rule.
       (delegates to the model overload), and `<Create>Async(model)` (creates, reads back, returns the model).
 - [ ] Create helpers **read the entity back via GET and return the persisted model**, and **throw on
       non-success** at every step (create *and* read-back).
+- [ ] Composite `<Create>Async` helpers are **self-completing** (Step 5a): every dependency is an optional
+      parameter, created only when the caller omits it (parent entities, users, tenants) — push Arrange
+      complexity into the builder so tests stay one-liners. Return a small result record with the ids/slugs.
 - [ ] Test names `_<status>_<scenario>`; class `<Verb><Noun>Tests`.
 - [ ] The `400` test(s) cover **every** rule in the request's validator (ideally one test breaking all
       fields at once, not just the first field). Cross-check against `<Command>Validator.cs` — see Step 6a.
