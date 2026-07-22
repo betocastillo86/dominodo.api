@@ -1,5 +1,6 @@
 using Dominodo.Admin.Domain.Notifications;
 using Dominodo.Admin.Domain.Ports;
+using Dominodo.Shared.Kernel.Pagination;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dominodo.Admin.Persistence.Repositories;
@@ -11,9 +12,10 @@ internal sealed class InAppMessageRepository(AdminDbContext db) : IInAppMessageR
     public Task<InAppMessage?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         db.InAppMessages.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
-    public async Task<IReadOnlyList<InAppMessage>> GetForRecipientAsync(
+    public async Task<(IReadOnlyList<InAppMessage> Items, long TotalCount)> GetForRecipientAsync(
         Guid recipientUserId,
         bool unreadOnly,
+        PageRequest page,
         CancellationToken cancellationToken = default)
     {
         var query = db.InAppMessages
@@ -25,15 +27,27 @@ internal sealed class InAppMessageRepository(AdminDbContext db) : IInAppMessageR
             query = query.Where(n => !n.IsRead);
         }
 
-        return await query.OrderByDescending(n => n.CreatedAtUtc).ToListAsync(cancellationToken);
+        query = query.OrderByDescending(n => n.CreatedAtUtc);
+
+        var total = await query.LongCountAsync(cancellationToken);
+        var items = await query.Skip(page.Skip).Take(page.Take).ToListAsync(cancellationToken);
+
+        return (items, total);
     }
 
-    public async Task<IReadOnlyList<InAppMessage>> GetForTenantAsync(
+    public async Task<(IReadOnlyList<InAppMessage> Items, long TotalCount)> GetForTenantAsync(
         Guid tenantId,
-        CancellationToken cancellationToken = default) =>
-        await db.InAppMessages
+        PageRequest page,
+        CancellationToken cancellationToken = default)
+    {
+        var query = db.InAppMessages
             .AsNoTracking()
             .Where(n => n.TenantId == tenantId)
-            .OrderByDescending(n => n.CreatedAtUtc)
-            .ToListAsync(cancellationToken);
+            .OrderByDescending(n => n.CreatedAtUtc);
+
+        var total = await query.LongCountAsync(cancellationToken);
+        var items = await query.Skip(page.Skip).Take(page.Take).ToListAsync(cancellationToken);
+
+        return (items, total);
+    }
 }

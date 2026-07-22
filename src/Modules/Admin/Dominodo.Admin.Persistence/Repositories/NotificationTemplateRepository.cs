@@ -1,5 +1,6 @@
 using Dominodo.Admin.Domain.Notifications;
 using Dominodo.Admin.Domain.Ports;
+using Dominodo.Shared.Kernel.Pagination;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dominodo.Admin.Persistence.Repositories;
@@ -14,7 +15,7 @@ internal sealed class NotificationTemplateRepository(AdminDbContext db) : INotif
     public Task<NotificationTemplate?> GetByTypeAsync(NotificationType type, Guid? tenantId, CancellationToken cancellationToken = default) =>
         db.NotificationTemplates.FirstOrDefaultAsync(t => t.Type == type && t.TenantId == tenantId, cancellationToken);
 
-    public async Task<IReadOnlyList<NotificationTemplate>> GetAllAsync(Guid? tenantId, CancellationToken cancellationToken = default)
+    public async Task<(IReadOnlyList<NotificationTemplate> Items, long TotalCount)> GetAllAsync(Guid? tenantId, PageRequest page, CancellationToken cancellationToken = default)
     {
         var query = db.NotificationTemplates.AsNoTracking();
 
@@ -22,7 +23,12 @@ internal sealed class NotificationTemplateRepository(AdminDbContext db) : INotif
             ? query.Where(t => t.TenantId == null || t.TenantId == tenantId)
             : query.Where(t => t.TenantId == null);
 
-        return await query.OrderBy(t => t.Type).ToListAsync(cancellationToken);
+        query = query.OrderBy(t => t.Type);
+
+        var total = await query.LongCountAsync(cancellationToken);
+        var items = await query.Skip(page.Skip).Take(page.Take).ToListAsync(cancellationToken);
+
+        return (items, total);
     }
 
     public Task<bool> ExistsAsync(NotificationType type, Guid? tenantId, CancellationToken cancellationToken = default) =>

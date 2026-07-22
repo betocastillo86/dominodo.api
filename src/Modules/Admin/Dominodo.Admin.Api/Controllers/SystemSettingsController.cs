@@ -6,6 +6,7 @@ using Dominodo.Admin.Contracts;
 using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Infrastructure.Http;
 using Dominodo.Shared.Kernel.Authorization;
+using Dominodo.Shared.Kernel.Pagination;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,10 +25,10 @@ public sealed class SystemSettingsController(ISender sender) : ControllerBase
     [HttpGet]
     [HasPermission(Permissions.SettingsView)]
     [EndpointSummary("Lists global settings plus the current tenant's overrides (when X-Tenant is sent).")]
-    [ProducesResponseType(typeof(IReadOnlyList<SystemSettingDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> List(CancellationToken ct)
+    [ProducesResponseType(typeof(PagedResult<SystemSettingDto>), StatusCodes.Status200OK)]
+    public async Task<IResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetSystemSettingsQuery(), ct);
+        var result = await sender.Send(new GetSystemSettingsQuery(page, pageSize), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
 

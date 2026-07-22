@@ -28,9 +28,11 @@ public interface IAdminClient
 
     // Lists global default templates plus the current tenant's overrides (when X-Tenant is sent) —
     // NotificationTemplatesController.List, guarded by [HasPermission(Permissions.NotificationsView)].
-    // Anonymous ⇒ 401; a valid bearer lacking the permission ⇒ 403. Success is 200 with a bare array.
+    // Anonymous ⇒ 401; a valid bearer lacking the permission ⇒ 403. Success is 200 with a paged envelope.
     [Get("/api/v1/notification-templates")]
-    Task<ApiResponse<List<NotificationTemplateModel>>> GetNotificationTemplates(
+    Task<ApiResponse<PagedResultModel<NotificationTemplateModel>>> GetNotificationTemplates(
+        [Query] int? page = null,
+        [Query] int? pageSize = null,
         [Header("X-Tenant")] string? tenant = null,
         [Authorize("Bearer")] string? token = null);
 

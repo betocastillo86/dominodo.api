@@ -63,7 +63,7 @@ public sealed class GetNotificationTemplatesTests : BaseAdminTests
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var templates = response.Content;
         templates.ShouldNotBeNull();
-        var mine = templates!.SingleOrDefault(t => t.Id == seeded.Id);
+        var mine = templates!.Items.SingleOrDefault(t => t.Id == seeded.Id);
         mine.ShouldNotBeNull();
         mine!.TenantId.ShouldBeNull();
         mine.Type.ShouldBe("RequestClosed");

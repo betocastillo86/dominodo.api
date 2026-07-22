@@ -4,6 +4,7 @@ using Dominodo.Admin.Contracts;
 using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Infrastructure.Http;
 using Dominodo.Shared.Kernel.Authorization;
+using Dominodo.Shared.Kernel.Pagination;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -20,20 +21,20 @@ public sealed class MessagesController(ISender sender) : ControllerBase
     [HttpGet("email")]
     [HasPermission(Permissions.NotificationsView)]
     [EndpointSummary("Lists email outbox messages, optionally filtered by status.")]
-    [ProducesResponseType(typeof(IReadOnlyList<EmailMessageDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> ListEmail([FromQuery] string? status = null, CancellationToken ct = default)
+    [ProducesResponseType(typeof(PagedResult<EmailMessageDto>), StatusCodes.Status200OK)]
+    public async Task<IResult> ListEmail([FromQuery] string? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await sender.Send(new ListEmailMessagesQuery(status), ct);
+        var result = await sender.Send(new ListEmailMessagesQuery(status, page, pageSize), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
 
     [HttpGet("push")]
     [HasPermission(Permissions.NotificationsView)]
     [EndpointSummary("Lists push outbox messages, optionally filtered by status.")]
-    [ProducesResponseType(typeof(IReadOnlyList<PushMessageDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> ListPush([FromQuery] string? status = null, CancellationToken ct = default)
+    [ProducesResponseType(typeof(PagedResult<PushMessageDto>), StatusCodes.Status200OK)]
+    public async Task<IResult> ListPush([FromQuery] string? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await sender.Send(new ListPushMessagesQuery(status), ct);
+        var result = await sender.Send(new ListPushMessagesQuery(status, page, pageSize), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
 }

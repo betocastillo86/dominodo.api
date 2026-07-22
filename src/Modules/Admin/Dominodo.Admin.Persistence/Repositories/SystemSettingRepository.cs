@@ -1,5 +1,6 @@
 using Dominodo.Admin.Domain.Configuration;
 using Dominodo.Admin.Domain.Ports;
+using Dominodo.Shared.Kernel.Pagination;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dominodo.Admin.Persistence.Repositories;
@@ -30,7 +31,7 @@ internal sealed class SystemSettingRepository(AdminDbContext db) : ISystemSettin
             .FirstOrDefaultAsync(s => s.Key == key && s.TenantId == null, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<SystemSetting>> GetAllAsync(Guid? tenantId, CancellationToken cancellationToken = default)
+    public async Task<(IReadOnlyList<SystemSetting> Items, long TotalCount)> GetAllAsync(Guid? tenantId, PageRequest page, CancellationToken cancellationToken = default)
     {
         var query = db.SystemSettings.AsNoTracking();
 
@@ -38,7 +39,12 @@ internal sealed class SystemSettingRepository(AdminDbContext db) : ISystemSettin
             ? query.Where(s => s.TenantId == null || s.TenantId == tenantId)
             : query.Where(s => s.TenantId == null);
 
-        return await query.OrderBy(s => s.Key).ToListAsync(cancellationToken);
+        query = query.OrderBy(s => s.Key);
+
+        var total = await query.LongCountAsync(cancellationToken);
+        var items = await query.Skip(page.Skip).Take(page.Take).ToListAsync(cancellationToken);
+
+        return (items, total);
     }
 
     public Task<bool> ExistsAsync(string key, Guid? tenantId, CancellationToken cancellationToken = default) =>

@@ -5,6 +5,7 @@ using Dominodo.Admin.Contracts;
 using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Infrastructure.Http;
 using Dominodo.Shared.Kernel.Authorization;
+using Dominodo.Shared.Kernel.Pagination;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,10 +25,10 @@ public sealed class NotificationTemplatesController(ISender sender) : Controller
     [HttpGet]
     [HasPermission(Permissions.NotificationsView)]
     [EndpointSummary("Lists global default templates plus the current tenant's overrides (when X-Tenant is sent).")]
-    [ProducesResponseType(typeof(IReadOnlyList<NotificationTemplateDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> List(CancellationToken ct)
+    [ProducesResponseType(typeof(PagedResult<NotificationTemplateDto>), StatusCodes.Status200OK)]
+    public async Task<IResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetNotificationTemplatesQuery(), ct);
+        var result = await sender.Send(new GetNotificationTemplatesQuery(page, pageSize), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
 

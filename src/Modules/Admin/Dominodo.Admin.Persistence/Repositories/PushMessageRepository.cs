@@ -1,5 +1,6 @@
 using Dominodo.Admin.Domain.Notifications;
 using Dominodo.Admin.Domain.Ports;
+using Dominodo.Shared.Kernel.Pagination;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dominodo.Admin.Persistence.Repositories;
@@ -8,9 +9,10 @@ internal sealed class PushMessageRepository(AdminDbContext db) : IPushMessageRep
 {
     public void Add(PushMessage message) => db.PushMessages.Add(message);
 
-    public async Task<IReadOnlyList<PushMessage>> ListAsync(
+    public async Task<(IReadOnlyList<PushMessage> Items, long TotalCount)> ListAsync(
         Guid? tenantId,
         DeliveryStatus? status,
+        PageRequest page,
         CancellationToken cancellationToken = default)
     {
         var query = db.PushMessages.AsNoTracking();
@@ -25,6 +27,11 @@ internal sealed class PushMessageRepository(AdminDbContext db) : IPushMessageRep
             query = query.Where(m => m.Status == status);
         }
 
-        return await query.OrderByDescending(m => m.SentAtUtc).ToListAsync(cancellationToken);
+        var ordered = query.OrderByDescending(m => m.SentAtUtc);
+
+        var total = await ordered.LongCountAsync(cancellationToken);
+        var items = await ordered.Skip(page.Skip).Take(page.Take).ToListAsync(cancellationToken);
+
+        return (items, total);
     }
 }

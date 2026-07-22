@@ -1,4 +1,5 @@
 using Dominodo.Admin.Domain.Configuration;
+using Dominodo.Shared.Kernel.Pagination;
 
 namespace Dominodo.Admin.Domain.Ports;
 
@@ -13,7 +14,7 @@ public interface ISystemSettingRepository
     Task<SystemSetting?> ResolveAsync(string key, Guid? tenantId, CancellationToken cancellationToken = default);
 
     // Lists global rows plus, when tenantId is set, that tenant's overrides.
-    Task<IReadOnlyList<SystemSetting>> GetAllAsync(Guid? tenantId, CancellationToken cancellationToken = default);
+    Task<(IReadOnlyList<SystemSetting> Items, long TotalCount)> GetAllAsync(Guid? tenantId, PageRequest page, CancellationToken cancellationToken = default);
 
     Task<bool> ExistsAsync(string key, Guid? tenantId, CancellationToken cancellationToken = default);
 }

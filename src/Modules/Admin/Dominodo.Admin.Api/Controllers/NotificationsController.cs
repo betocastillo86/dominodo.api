@@ -6,6 +6,7 @@ using Dominodo.Admin.Contracts;
 using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Infrastructure.Http;
 using Dominodo.Shared.Kernel.Authorization;
+using Dominodo.Shared.Kernel.Pagination;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -24,10 +25,10 @@ public sealed class NotificationsController(ISender sender) : ControllerBase
     [HttpGet("me")]
     [Authorize]
     [EndpointSummary("Lists the caller's own in-app notifications (newest first). Self-service — no notifications.* permission.")]
-    [ProducesResponseType(typeof(IReadOnlyList<InAppMessageDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> GetMine([FromQuery] bool unreadOnly = false, CancellationToken ct = default)
+    [ProducesResponseType(typeof(PagedResult<InAppMessageDto>), StatusCodes.Status200OK)]
+    public async Task<IResult> GetMine([FromQuery] bool unreadOnly = false, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetMyNotificationsQuery(unreadOnly), ct);
+        var result = await sender.Send(new GetMyNotificationsQuery(unreadOnly, page, pageSize), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
 
@@ -45,10 +46,10 @@ public sealed class NotificationsController(ISender sender) : ControllerBase
     [HttpGet]
     [HasPermission(Permissions.NotificationsView)]
     [EndpointSummary("Admin: lists in-app notifications for the current tenant (requires X-Tenant).")]
-    [ProducesResponseType(typeof(IReadOnlyList<InAppMessageDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> List(CancellationToken ct)
+    [ProducesResponseType(typeof(PagedResult<InAppMessageDto>), StatusCodes.Status200OK)]
+    public async Task<IResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await sender.Send(new ListNotificationsQuery(), ct);
+        var result = await sender.Send(new ListNotificationsQuery(page, pageSize), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
 
