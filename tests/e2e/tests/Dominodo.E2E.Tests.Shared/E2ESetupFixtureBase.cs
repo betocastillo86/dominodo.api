@@ -49,6 +49,7 @@ public abstract class E2ESetupFixtureBase
         services.AddUsersClient();
         services.AddTenantsClient();
         services.AddAdminClient();
+        services.AddOperationsClient();
         services.AddSqlClient();
         services.AddCoreServices(configuration);
 

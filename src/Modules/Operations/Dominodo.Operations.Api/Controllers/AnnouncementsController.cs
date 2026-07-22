@@ -43,11 +43,15 @@ public sealed class AnnouncementsController(ISender sender) : ControllerBase
 
     [HttpGet("mine")]
     [Authorize]
-    [EndpointSummary("Returns the active announcements relevant to the caller's audience, optionally filtered by category. Auth-only (no permission).")]
-    [ProducesResponseType(typeof(IReadOnlyList<AnnouncementDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> Mine([FromQuery] string? category = null, CancellationToken ct = default)
+    [EndpointSummary("Returns the active announcements relevant to the caller's audience, paged and optionally filtered by category. Auth-only (no permission).")]
+    [ProducesResponseType(typeof(PagedResult<AnnouncementDto>), StatusCodes.Status200OK)]
+    public async Task<IResult> Mine(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? category = null,
+        CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetMyAnnouncementsQuery(category), ct);
+        var result = await sender.Send(new GetMyAnnouncementsQuery(page, pageSize, category), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
 
