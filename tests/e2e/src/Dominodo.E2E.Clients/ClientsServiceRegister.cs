@@ -3,6 +3,7 @@ using System.Net.Mime;
 using Dominodo.E2E.Clients.Core.Api;
 using Dominodo.E2E.Clients.Core.Handlers;
 using Dominodo.E2E.Clients.Dev;
+using Dominodo.E2E.Clients.Modules.Admin;
 using Dominodo.E2E.Clients.Modules.Tenants;
 using Dominodo.E2E.Clients.Modules.Users;
 using Dominodo.E2E.Core.Json;
@@ -19,6 +20,21 @@ public static class ClientsServiceRegister
         services.AddTransient<Modules.Users.UsersRequestBuilder>();
 
         services.AddRefitClient<IUsersClient>(GetDefaultRefitSettings())
+            .ConfigureHttpClient(DefaultConfigurationClient)
+            .WithTenantHeaderHandler()
+            .WithAuthorizationHandler()
+            .WithCorrelationIdHandler()
+            .WithLoggingHandler()
+            .WithDefaultRetryHandler();
+
+        return services;
+    }
+
+    public static IServiceCollection AddAdminClient(this IServiceCollection services)
+    {
+        services.AddTransient<Modules.Admin.AdminRequestBuilder>();
+
+        services.AddRefitClient<IAdminClient>(GetDefaultRefitSettings())
             .ConfigureHttpClient(DefaultConfigurationClient)
             .WithTenantHeaderHandler()
             .WithAuthorizationHandler()

@@ -1,0 +1,12 @@
+{
+  "_comment": "Copy to appsettings.Local.json (gitignored) to override BaseUrl and the Jwt triple for your running environment. The Jwt values MUST match the running API's Jwt section so minted tokens validate. The committed appsettings.json defaults to the Development/base triple (what a plain `dotnet run` uses). Use the block below to point at an API running in IntegrationTests instead.",
+  "ApiSettings": {
+    "BaseUrl": "http://localhost:5083/"
+  },
+  "Jwt": {
+    "Issuer": "dominodo-tests",
+    "Audience": "dominodo-tests",
+    "SecretKey": "integration-tests-secret-key-min-32-characters",
+    "AccessTokenExpirationMinutes": 60
+  }
+}
