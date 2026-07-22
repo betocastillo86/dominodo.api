@@ -20,6 +20,25 @@ public interface IUsersClient
         Guid id,
         [Authorize("Bearer")] string? token = null);
 
+    // Admin listing — UsersController.List, guarded by [HasPermission(Permissions.UsersView)]:
+    // anonymous ⇒ 401, authenticated without users.view ⇒ 403, with it ⇒ 200. All filters optional.
+    // page/pageSize are CLAMPED server-side (no validator), so an out-of-range page is NOT a 400 —
+    // the only 400 is a model-binding failure (e.g. a non-enum `status`), hence status is a string
+    // on the wire so a test can send an unparseable value.
+    [Get("/api/v1/users")]
+    Task<ApiResponse<PagedResultModel<UserListItemModel>>> GetUsers(
+        [Query] Guid? tenantId = null,
+        [Query] string? name = null,
+        [Query] string? email = null,
+        [Query] string? phone = null,
+        [Query] string? status = null,
+        [Query] string? documentNumber = null,
+        [Query] bool? phoneVerified = null,
+        [Query] bool? emailVerified = null,
+        [Query] int page = 1,
+        [Query] int pageSize = 20,
+        [Authorize("Bearer")] string? token = null);
+
     // Guarded by [HasPermission(Permissions.RolesManage)] on RolesController: anonymous ⇒ 401,
     // authenticated without roles.manage ⇒ 403, SuperAdmin (or a user with the permission) ⇒ 200.
     [Get("/api/v1/roles")]
