@@ -20,11 +20,15 @@ namespace Dominodo.Shared.Infrastructure;
 
 public static class DependencyInjection
 {
+    private const string CorsPolicyName = "DominodoCors";
+
     public static IServiceCollection AddSharedInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
+
+        services.AddDominodoCors(configuration);
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<ITenantContext, HttpTenantContext>();
@@ -67,6 +71,25 @@ public static class DependencyInjection
             .WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation());
+
+        return services;
+    }
+
+    private static IServiceCollection AddDominodoCors(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var corsOptions = configuration
+            .GetSection(CorsOptions.SectionName)
+            .Get<CorsOptions>() ?? new CorsOptions();
+
+        services.AddCors(options =>
+            options.AddPolicy(CorsPolicyName, policy =>
+                policy
+                    .WithOrigins(corsOptions.AllowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials()));
 
         return services;
     }
@@ -120,6 +143,8 @@ public static class DependencyInjection
         app.UseExceptionHandler();
 
         app.UseMiddleware<CorrelationIdMiddleware>();
+
+        app.UseCors(CorsPolicyName);
 
         app.UseAuthentication();
         app.UseMiddleware<TenantResolutionMiddleware>();
