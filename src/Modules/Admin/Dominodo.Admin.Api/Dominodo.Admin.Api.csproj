@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The module's inbound HTTP adapter: controllers will live here (the only module project with
-       them). Empty for now — Admin exposes no HTTP yet; the project fixes the pattern. -->
+  <!-- The module's inbound HTTP adapter: controllers live here (the only module project with them).
+       They dispatch the module's internal MediatR commands via ISender; InternalsVisibleTo on
+       Admin.Application grants access without making commands/queries public. -->
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

@@ -229,8 +229,8 @@ namespace Dominodo.Users.Persistence.Migrations
                         new
                         {
                             Id = 9,
-                            Code = "settings.manage",
-                            Description = "Gestionar configuración.",
+                            Code = "settings.view",
+                            Description = "Ver configuración.",
                             Group = "Administración"
                         },
                         new
@@ -281,6 +281,41 @@ namespace Dominodo.Users.Persistence.Migrations
                             Code = "apartments.edit",
                             Description = "Editar apartamentos.",
                             Group = "Apartamentos"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Code = "settings.create",
+                            Description = "Crear configuración.",
+                            Group = "Administración"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Code = "settings.edit",
+                            Description = "Editar configuración.",
+                            Group = "Administración"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Code = "notifications.view",
+                            Description = "Ver notificaciones.",
+                            Group = "Notificaciones"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Code = "notifications.create",
+                            Description = "Crear notificaciones.",
+                            Group = "Notificaciones"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Code = "notifications.edit",
+                            Description = "Editar notificaciones.",
+                            Group = "Notificaciones"
                         });
                 });
 
@@ -483,8 +518,73 @@ namespace Dominodo.Users.Persistence.Migrations
                         },
                         new
                         {
+                            RoleId = 1,
+                            PermissionId = 17
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 18
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 19
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 20
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 21
+                        },
+                        new
+                        {
                             RoleId = 2,
                             PermissionId = 13
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 9
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 17
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 18
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 19
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 20
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 21
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 19
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 20
                         });
                 });
 

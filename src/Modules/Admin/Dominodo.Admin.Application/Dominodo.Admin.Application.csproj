@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Kernel\Dominodo.Shared.Kernel.csproj" />
     <ProjectReference Include="..\..\..\Shared\Dominodo.Shared.Abstractions\Dominodo.Shared.Abstractions.csproj" />
     <ProjectReference Include="..\..\Users\Dominodo.Users.Contracts\Dominodo.Users.Contracts.csproj" />
+    <ProjectReference Include="..\..\Tenants\Dominodo.Tenants.Contracts\Dominodo.Tenants.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

@@ -22,6 +22,12 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(sp =>
             new WolverineUnitOfWork<AdminDbContext>(sp.GetRequiredService<IDbContextOutbox<AdminDbContext>>()));
         services.AddScoped<INotificationDeliveryRepository, NotificationDeliveryRepository>();
+        services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
+        services.AddScoped<INotificationTemplateRepository, NotificationTemplateRepository>();
+        services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
+        services.AddScoped<IEmailMessageRepository, EmailMessageRepository>();
+        services.AddScoped<IPushMessageRepository, PushMessageRepository>();
+        services.AddScoped<IDeviceRegistrationRepository, DeviceRegistrationRepository>();
 
         return services;
     }

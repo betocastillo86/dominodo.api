@@ -1,6 +1,6 @@
 # Modelo de dominio — Dominodo (MVP)
 
-> **Estado:** vigente · **Versión del modelo:** v2 · **Última actualización:** 2026-07-16
+> **Estado:** vigente · **Versión del modelo:** v3 · **Última actualización:** 2026-07-21
 > Este archivo refleja siempre la **verdad actual** del modelo (documento vivo, un solo archivo).
 > El *porqué* de las decisiones vive en `docs/adr/`; la historia línea por línea, en git.
 > Se sube la versión (v2, v3…) solo ante cambios **estructurales**, no por correcciones menores.
@@ -60,8 +60,9 @@ Implementado y verificado en el host (`Users` + `Admin` + `Tenants`); el resto d
   aceptar, cambiar rol, suspender/reactivar, remover), permiso `memberships.manage` sembrado a
   `Administrador`, e integration events (`§1.9`) vía outbox Wolverine. Esto enciende la rama tenant de la
   resolución de permisos (doc 12).
-- **`Admin`:** slice mínimo de notificaciones — consume el evento OTP de `Users` y entrega por WhatsApp
-  (fallback email). El resto de `§4` es diseño.
+- **`Admin`:** **Diseño pendiente:** los consumers de `§4.5` que reaccionan a integration events de
+  `Operations` (`RequestOpened`/`DeliveryRegistered`/`VisitRegistered`/`AnnouncementPublished`) — el módulo
+  `Operations` y su `Contracts` aún no existen.
 - **Modelo de token (hoy):** el access token es **tenant-agnostic** — lleva `sub = userId` + un claim
   `role` **por cada rol de ámbito `Platform`** del usuario, resuelto desde sus filas
   `PlatformRoleAssignment` (`§1.5`); el `role=SuperAdmin` del bootstrap sale de dato, no de código. **No
@@ -78,8 +79,8 @@ Implementado y verificado en el host (`Users` + `Admin` + `Tenants`); el resto d
 | --- | --- | --- |
 | `Users` | Identidad global, autenticación, catálogo global de roles/permisos, membresía a conjuntos | `users` |
 | `Tenants` | Conjuntos (Tenant), apartamentos, vínculo residente↔apartamento, features habilitadas | `tenants` |
-| `Operations` | Solicitudes (PQRS), paquetería, visitas | `operations` |
-| `Admin` | Notificaciones (in-app/email/push), plantillas, boletín, dispositivos, y configuración (SystemSetting) | `admin` |
+| `Operations` | Solicitudes (PQRS), paquetería, visitas, comunicados/boletín | `operations` |
+| `Admin` | Notificaciones (in-app/email/push), plantillas, dispositivos, y configuración (SystemSetting) | `admin` |
 
 > Cada módulo = un schema + un `DbContext`. Cuando la app pase a microservicios, cada módulo es un
 > candidato a servicio independiente. Por eso `Admin` agrupa notificaciones + configuración: para que
@@ -322,7 +323,7 @@ IsFeatureEnabled(tenantId, featureKey) -> bool
 
 # 3. Módulo `Operations`
 
-PQRS + paquetería + visitas. Tres agregados independientes en un mismo módulo/schema.
+PQRS + paquetería + visitas + comunicados. Cuatro agregados independientes en un mismo módulo/schema.
 Todos `ITenantOwned`. Guardan `UserId`/`ApartmentId` como valores crudos y validan existencia vía
 `ITenantsModuleApi`/`IUsersModuleApi`.
 
@@ -443,17 +444,48 @@ Registrada por vigilante, asociada a un apartamento.
 | `ExitAtUtc` | `DateTimeOffset?` | Para parqueadero/tiempos |
 | `Metadata` | `json` | **JSON** |
 
-## 3.4 Fachada `IOperationsModuleApi` (Contracts)
+## 3.4 `Announcement` (Agg) — Comunicado / boletín informativo — **`ITenantOwned`**
+
+Contenido que la administración **publica** y los residentes **consumen** (noticias del conjunto,
+boletín). Es un agregado de **contenido operativo**, no parte de la infraestructura de notificaciones:
+*cargar, editar y publicar* comunicados vive aquí; *entregar* el aviso de que hay uno nuevo es
+responsabilidad de `Admin` (ver frontera abajo). Broadcast admin→residentes, distinto de las
+notificaciones transaccionales.
+
+| Campo | Tipo | Notas |
+| --- | --- | --- |
+| `Id` | `Guid` | |
+| `TenantId` | `Guid` | `ITenantOwned` |
+| `Title` / `Body` | `string` | |
+| `Priority` | `byte` | **Escala numérica** de orden de despliegue; **0 = prioridad máxima** |
+| `PublishedAtUtc` | `DateTimeOffset?` | |
+| `ExpiresAtUtc` | `DateTimeOffset?` | **Tiempo de vida**: tras esta fecha deja de mostrarse |
+| `AudienceType` | `enum` | `AllTenant`, `ByTower`, `ByApartments` |
+| `AudienceFilter` | `json` | **JSON** — torres/apartamentos objetivo (Guids crudos de `Tenants`) |
+| `Status` | `enum` | `Draft`, `Published`, `Archived` |
+| `PublishedByUserId` | `Guid?` | |
+| `Attachments` | (Ent) | igual patrón que `RequestAttachment` |
+
+> "Vigente" = `Status = Published` **y** (`ExpiresAtUtc` nulo o futuro). Orden de despliegue por
+> `Priority` ascendente (0 primero).
+>
+> **Frontera con `Admin`:** al pasar a `Published`, el agregado levanta un domain event que un handler
+> in-module traduce en `AnnouncementPublishedIntegrationEvent` (§3.6); un consumer en `Admin`
+> materializa las notificaciones (in-app/push/email) según la audiencia. **`Operations` posee el
+> comunicado; `Admin` posee el envío.** La plantilla `NotificationTemplate.Type = Announcement` sigue
+> en `Admin` (§4.1) — es la plantilla del *aviso*, no el comunicado.
+
+## 3.5 Fachada `IOperationsModuleApi` (Contracts)
 
 Lecturas cross-module (p. ej. dashboards super-admin): `GetRequestSummary`,
 `GetOpenRequestsCount(tenantId)`… (mismo criterio que §1.8).
 
-## 3.5 Integration events (Contracts)
+## 3.6 Integration events (Contracts)
 
 `RequestOpenedIntegrationEvent`, `RequestUpdatedIntegrationEvent`,
 `RequestStatusChangedIntegrationEvent`, `RequestClosedIntegrationEvent`,
 `DeliveryRegisteredIntegrationEvent`, `DeliveryDeliveredIntegrationEvent`,
-`VisitRegisteredIntegrationEvent`.
+`VisitRegisteredIntegrationEvent`, `AnnouncementPublishedIntegrationEvent`.
 → Los consume `Admin` (notificaciones) para avisar a residentes y participantes.
 
 ---
@@ -472,6 +504,10 @@ Agrupa **notificaciones** y **configuración** (temas administrativos, mismo sch
 | `Id` | `Guid` | |
 | `TenantId` | `Guid?` | null = global; set = override |
 | `Type` | `enum` | `RequestOpened`, `RequestUpdated`, `RequestClosed`, `DeliveryReceived`, `VisitRegistered`, `Announcement`… por ahora solo el correo de bienvenida `Welcome` es necesario. Despues se agregarán más | 
+
+> **`Announcement` como `Type` de plantilla vive aquí, pero el agregado `Announcement` (el comunicado)
+> vive en `Operations` (§3.4).** Esta plantilla es la del *aviso de que hay un comunicado nuevo*; la
+> dispara el consumer de `AnnouncementPublishedIntegrationEvent`.
 | `Channels` | `flags` | `Email`, `Push`, `InApp` |
 | `EmailSubject` / `EmailBodyHtml` | `string?` | |
 | `InAppText` / `PushText` | `string?` | |
@@ -492,32 +528,21 @@ se scopean con `ForCurrentTenant`; se consultan por destinatario/estado.
 - **`PushMessage`** (outbox): `Id`, `TenantId`, `RecipientUserId`, `Title`, `Body`, `TargetUrl?`,
   `Platform` (`Android`/`iOS`), `Status`, `Attempts`, `DedupHash`, `SentAtUtc?`.
 
-## 4.3 `Announcement` (Agg) — Boletín informativo — **`ITenantOwned`**
+> **Permisos (grupo `Notificaciones`)** — gatean tanto `NotificationTemplate` (§4.1) como los mensajes
+> materializados (§4.2):
+> - `notifications.view` — leer plantillas **y** mensajes materializados.
+> - `notifications.edit` — editar plantillas **y** mensajes materializados.
+> - `notifications.create` — **solo mensajes materializados** (las plantillas son catálogo, no se crean por API).
+>
+> Asignación: `Administrador` (tenant) los tres; `AsistenteAdministracion` `view` + `create`.
+> `SuperAdmin` los tiene por superset. Editar una **plantilla global** (`TenantId = null`) exige el
+> permiso en un rol de ámbito `Platform`; el `Administrador` opera sobre el override de su conjunto.
 
-Broadcast admin→residentes (distinto de las notificaciones transaccionales).
-
-| Campo | Tipo | Notas |
-| --- | --- | --- |
-| `Id` | `Guid` | |
-| `TenantId` | `Guid` | |
-| `Title` / `Body` | `string` | |
-| `Priority` | `byte` | **Escala numérica** de orden de despliegue; **0 = prioridad máxima** |
-| `PublishedAtUtc` | `DateTimeOffset?` | |
-| `ExpiresAtUtc` | `DateTimeOffset?` | **Tiempo de vida**: tras esta fecha deja de mostrarse |
-| `AudienceType` | `enum` | `AllTenant`, `ByTower`, `ByApartments` |
-| `AudienceFilter` | `json` | **JSON** — torres/apartamentos objetivo |
-| `Status` | `enum` | `Draft`, `Published`, `Archived` |
-| `PublishedByUserId` | `Guid?` | |
-| `Attachments` | (Ent) | igual patrón que `RequestAttachment` |
-
-> "Vigente" = `Status = Published` **y** (`ExpiresAtUtc` nulo o futuro). Orden de despliegue por
-> `Priority` ascendente (0 primero).
-
-## 4.4 `DeviceRegistration` (Agg) — **system-level** (atado al user, no al tenant)
+## 4.3 `DeviceRegistration` (Agg) — **system-level** (atado al user, no al tenant)
 
 `Id`, `UserId`, `Platform`, `Token`, `IsActive`, `UpdatedAtUtc`.
 
-## 4.5 `SystemSetting` (Agg) — configuración operativa
+## 4.4 `SystemSetting` (Agg) — configuración operativa
 
 Nombre `SystemSetting` (no `Setting`) para evitar conflictos de nombre. Key/value con override por
 tenant, caché en memoria e invalidación por evento (patrón pollaya, mejorado). **Las features por
@@ -538,11 +563,24 @@ Acceso en runtime: `ISystemSettings` (en `Shared.Abstractions`) inyectable, lee 
 la escritura publica `SystemSettingChangedIntegrationEvent` y un consumer refresca la caché. Cambios
 sin recompilar ni redeploy.
 
-## 4.6 Consumers (Application, internos)
+> **Permisos (grupo `Administración`):** `settings.view`, `settings.create`, `settings.edit`
+> **reemplazan** al antiguo `settings.manage` (coarse), alineando `SystemSetting` con el estilo fino de
+> `tenants.*`. Asignación: `Administrador` (tenant) los tres, acotado al **override** de su conjunto; la
+> configuración **global** (`TenantId = null`: SMTP, API keys de WhatsApp) solo la toca un rol de ámbito
+> `Platform` (`SuperAdmin` por superset). `Vigilante`/`Residente`: ninguno.
+
+## 4.5 Consumers (Application, internos)
 
 Un consumer por integration event relevante; traduce a un comando idempotente que crea los mensajes
 según la plantilla y el canal. Ej.: `RequestOpenedConsumer` → notifica a los `RequestParticipant`
-(reportantes + followers) y al responsable.
+(reportantes + followers) y al responsable. `AnnouncementPublishedConsumer` → materializa el aviso a
+los residentes de la audiencia del comunicado (§3.4).
+
+> **Diseño pendiente (no construible aún):** estos consumers reaccionan a integration events del módulo
+> `Operations` (`RequestOpened`, `DeliveryRegistered`, `VisitRegistered`, `AnnouncementPublished`), que
+> **todavía no existe** (ni su `Contracts`). Quedan como follow-up: cablearlos en `AddAdminHandlers` una
+> vez que aterrice `Operations.Contracts`, siguiendo el patrón ya implementado del `TenantCreatedConsumer`
+> (§5.3). El seeder de conjunto (§5.3) sí está implementado porque `Tenants.Contracts` ya existe.
 
 ---
 
@@ -578,6 +616,7 @@ es un detalle de la capa de **persistencia**, no del dominio; aquí solo fijamos
 | `Operations` valida feature habilitada | `ITenantsModuleApi.IsFeatureEnabled` (sync) |
 | Abrir/actualizar/cerrar solicitud → notificar | integration event → consumer en `Admin` (async) |
 | Registrar paquete/visita → notificar residente | integration event → consumer en `Admin` (async) |
+| Publicar comunicado → notificar residentes de la audiencia | integration event → consumer en `Admin` (async) |
 | Crear conjunto → sembrar config/plantillas default | integration event → consumer en `Admin` (async) |
 
 ## 5.4 WhatsApp (nota de arquitectura)

@@ -4,6 +4,9 @@ using Dominodo.Admin.Domain.Ports;
 using Dominodo.Shared.Abstractions;
 using Dominodo.Shared.Kernel;
 using Dominodo.Shared.Kernel.Messaging;
+// Disambiguate from the Admin.Domain.Notifications.EmailMessage aggregate (§4.2). This is the transport
+// record consumed by IEmailSender — distinct type, same name.
+using EmailTransport = Dominodo.Shared.Abstractions.EmailMessage;
 
 namespace Dominodo.Admin.Application.Notifications.SendOtp;
 
@@ -63,7 +66,7 @@ internal sealed class SendOtpNotificationCommandHandler(
             }
 
             await email.SendAsync(
-                new EmailMessage(command.Email, "Tu código de verificación", $"<p>{body}</p>", body),
+                new EmailTransport(command.Email, "Tu código de verificación", $"<p>{body}</p>", body),
                 ct);
             channel = DeliveryChannel.Email;
             recipient = command.Email;

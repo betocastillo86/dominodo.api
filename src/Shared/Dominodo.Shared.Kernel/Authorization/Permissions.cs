@@ -25,7 +25,14 @@ public static class Permissions
     public const string AnnouncementsManage = "announcements.manage";
 
     // Administración
-    public const string SettingsManage = "settings.manage";
+    public const string SettingsView   = "settings.view";
+    public const string SettingsCreate = "settings.create";
+    public const string SettingsEdit   = "settings.edit";
+
+    // Notificaciones
+    public const string NotificationsView   = "notifications.view";
+    public const string NotificationsCreate = "notifications.create";
+    public const string NotificationsEdit   = "notifications.edit";
 
     // Plataforma / Conjuntos (tenant-independent)
     public const string TenantsCreate = "tenants.create";  // create a new conjunto

@@ -30,7 +30,12 @@ public static class DominodoConstants
         public const string DeliveriesManage    = "deliveries.manage";
         public const string VisitsRegister      = "visits.register";
         public const string AnnouncementsManage = "announcements.manage";
-        public const string SettingsManage      = "settings.manage";
+        public const string SettingsView        = "settings.view";
+        public const string SettingsCreate      = "settings.create";
+        public const string SettingsEdit        = "settings.edit";
+        public const string NotificationsView   = "notifications.view";
+        public const string NotificationsCreate = "notifications.create";
+        public const string NotificationsEdit   = "notifications.edit";
         public const string TenantsCreate       = "tenants.create";
         public const string TenantsView         = "tenants.view";
         public const string TenantsEdit         = "tenants.edit";
@@ -64,7 +69,7 @@ public static class DominodoConstants
             ["deliveries.manage"]    = Guid.Parse("00000000-0000-0000-0000-000000001006"),
             ["visits.register"]      = Guid.Parse("00000000-0000-0000-0000-000000001007"),
             ["announcements.manage"] = Guid.Parse("00000000-0000-0000-0000-000000001008"),
-            ["settings.manage"]      = Guid.Parse("00000000-0000-0000-0000-000000001009"),
+            ["settings.view"]        = Guid.Parse("00000000-0000-0000-0000-000000001009"),
             ["tenants.create"]       = Guid.Parse("00000000-0000-0000-0000-000000001010"),
             ["tenants.view"]         = Guid.Parse("00000000-0000-0000-0000-000000001011"),
             ["tenants.edit"]         = Guid.Parse("00000000-0000-0000-0000-000000001012"),
@@ -72,6 +77,11 @@ public static class DominodoConstants
             ["apartments.create"]    = Guid.Parse("00000000-0000-0000-0000-000000001014"),
             ["apartments.view"]      = Guid.Parse("00000000-0000-0000-0000-000000001015"),
             ["apartments.edit"]      = Guid.Parse("00000000-0000-0000-0000-000000001016"),
+            ["settings.create"]      = Guid.Parse("00000000-0000-0000-0000-000000001017"),
+            ["settings.edit"]        = Guid.Parse("00000000-0000-0000-0000-000000001018"),
+            ["notifications.view"]   = Guid.Parse("00000000-0000-0000-0000-000000001019"),
+            ["notifications.create"] = Guid.Parse("00000000-0000-0000-0000-000000001020"),
+            ["notifications.edit"]   = Guid.Parse("00000000-0000-0000-0000-000000001021"),
         };
 
         public static Guid UserIdFor(string permission) =>
@@ -94,7 +104,7 @@ public static class DominodoConstants
             ["deliveries.manage"]    = Guid.Parse("00000000-0000-0000-0000-000000001106"),
             ["visits.register"]      = Guid.Parse("00000000-0000-0000-0000-000000001107"),
             ["announcements.manage"] = Guid.Parse("00000000-0000-0000-0000-000000001108"),
-            ["settings.manage"]      = Guid.Parse("00000000-0000-0000-0000-000000001109"),
+            ["settings.view"]        = Guid.Parse("00000000-0000-0000-0000-000000001109"),
             ["tenants.create"]       = Guid.Parse("00000000-0000-0000-0000-000000001110"),
             ["tenants.view"]         = Guid.Parse("00000000-0000-0000-0000-000000001111"),
             ["tenants.edit"]         = Guid.Parse("00000000-0000-0000-0000-000000001112"),
@@ -102,6 +112,11 @@ public static class DominodoConstants
             ["apartments.create"]    = Guid.Parse("00000000-0000-0000-0000-000000001114"),
             ["apartments.view"]      = Guid.Parse("00000000-0000-0000-0000-000000001115"),
             ["apartments.edit"]      = Guid.Parse("00000000-0000-0000-0000-000000001116"),
+            ["settings.create"]      = Guid.Parse("00000000-0000-0000-0000-000000001117"),
+            ["settings.edit"]        = Guid.Parse("00000000-0000-0000-0000-000000001118"),
+            ["notifications.view"]   = Guid.Parse("00000000-0000-0000-0000-000000001119"),
+            ["notifications.create"] = Guid.Parse("00000000-0000-0000-0000-000000001120"),
+            ["notifications.edit"]   = Guid.Parse("00000000-0000-0000-0000-000000001121"),
         };
 
         public static Guid TenantUserIdFor(string permission) =>

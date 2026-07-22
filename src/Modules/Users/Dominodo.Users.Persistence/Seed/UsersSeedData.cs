@@ -44,20 +44,35 @@ public static class UsersSeedData
         new(6,  PermissionCodes.DeliveriesManage,    "Gestionar paquetería.",                 "Paquetería"),
         new(7,  PermissionCodes.VisitsRegister,      "Registrar visitas.",                    "Visitas"),
         new(8,  PermissionCodes.AnnouncementsManage, "Gestionar boletines.",                  "Comunicaciones"),
-        new(9,  PermissionCodes.SettingsManage,      "Gestionar configuración.",              "Administración"),
+        new(9,  PermissionCodes.SettingsView,        "Ver configuración.",                    "Administración"),
         new(10, PermissionCodes.TenantsCreate,       "Crear conjuntos residenciales.",        "Plataforma"),
         new(11, PermissionCodes.TenantsView,         "Ver conjuntos residenciales.",          "Plataforma"),
         new(12, PermissionCodes.TenantsEdit,         "Editar conjuntos residenciales.",       "Plataforma"),
         new(13, PermissionCodes.MembershipsManage,   "Gestionar membresías de un conjunto.",  "Membresías"),
         new(14, PermissionCodes.ApartmentsCreate,    "Crear apartamentos.",                    "Apartamentos"),
         new(15, PermissionCodes.ApartmentsView,      "Ver apartamentos.",                      "Apartamentos"),
-        new(16, PermissionCodes.ApartmentsEdit,      "Editar apartamentos.",                   "Apartamentos")
+        new(16, PermissionCodes.ApartmentsEdit,      "Editar apartamentos.",                   "Apartamentos"),
+        new(17, PermissionCodes.SettingsCreate,      "Crear configuración.",                  "Administración"),
+        new(18, PermissionCodes.SettingsEdit,        "Editar configuración.",                 "Administración"),
+        new(19, PermissionCodes.NotificationsView,   "Ver notificaciones.",                   "Notificaciones"),
+        new(20, PermissionCodes.NotificationsCreate, "Crear notificaciones.",                 "Notificaciones"),
+        new(21, PermissionCodes.NotificationsEdit,   "Editar notificaciones.",                "Notificaciones")
     };
 
-    // SuperAdmin gets every permission; Administrador gets memberships.manage for tenant-scoped access.
+    // SuperAdmin gets every permission; other roles get tenant-scoped grants per their responsibilities.
     public static IReadOnlyList<RolePermission> RolePermissions { get; } =
         Permissions.Select(p => new RolePermission(SuperAdminRoleId, p.Id))
+            // Administrador: memberships + settings (view/create/edit) + notifications (view/create/edit)
             .Append(new RolePermission(AdministradorRoleId, 13))
+            .Append(new RolePermission(AdministradorRoleId, 9))
+            .Append(new RolePermission(AdministradorRoleId, 17))
+            .Append(new RolePermission(AdministradorRoleId, 18))
+            .Append(new RolePermission(AdministradorRoleId, 19))
+            .Append(new RolePermission(AdministradorRoleId, 20))
+            .Append(new RolePermission(AdministradorRoleId, 21))
+            // AsistenteAdministracion: notifications view + create
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 19))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 20))
             .ToList();
 
     // The bootstrap SuperAdmin is assigned the Platform-scope SuperAdmin role via data, not code.

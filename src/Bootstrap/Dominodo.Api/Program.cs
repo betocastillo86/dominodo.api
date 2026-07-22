@@ -42,6 +42,10 @@ builder.Services.AddTenantsPersistence();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Dominodo.Shared.Abstractions.IPermissionProvider, Dominodo.Api.Auth.CachingPermissionProvider>();
 
+// Runtime configuration port (domain-model §4.4) — implemented here because it bridges to the Admin
+// facade. Reads from an in-memory cache; invalidated on SystemSettingChangedIntegrationEvent below.
+builder.Services.AddScoped<Dominodo.Shared.Abstractions.ISystemSettings, Dominodo.Api.Auth.CachingSystemSettings>();
+
 // Message bus (Wolverine, MIT — doc 07). Durable local queues are the in-process transport today;
 // swapping to RabbitMQ / Azure Service Bus is config only. Each module enrolls its own DbContext +
 // ancillary SQL Server message store (its own schema); the shared envelope storage lives in "wolverine".
@@ -81,6 +85,9 @@ builder.Host.UseWolverine(opts =>
     // Host-side consumer: evicts the permission-cache entry on any membership change (doc 12).
     opts.Discovery.IncludeType<Dominodo.Api.Auth.WhenMembershipChanged_InvalidatePermissionCache>();
 
+    // Host-side consumer: evicts the settings-cache entry when a SystemSetting changes (doc §4.4).
+    opts.Discovery.IncludeType<Dominodo.Api.Auth.WhenSystemSettingChanged_InvalidateSettingsCache>();
+
     opts.Policies.UseDurableLocalQueues(); // swap to opts.UseRabbitMq(...) later — handlers unchanged
 });
 
@@ -90,9 +97,9 @@ builder.Host.UseResourceSetupOnStartup();
 builder.Services
     .AddControllers()
     // Module controllers live in each module's *.Api assembly — register them as parts.
-    // (Admin.Api added here once it exposes controllers.)
     .AddApplicationPart(typeof(Dominodo.Users.Api.IUsersApiMarker).Assembly)
-    .AddApplicationPart(typeof(Dominodo.Tenants.Api.ITenantsApiMarker).Assembly);
+    .AddApplicationPart(typeof(Dominodo.Tenants.Api.ITenantsApiMarker).Assembly)
+    .AddApplicationPart(typeof(Dominodo.Admin.Api.IAdminApiMarker).Assembly);
 builder.Services.AddDominodoSwagger();
 
 builder.Services.AddHealthChecks()

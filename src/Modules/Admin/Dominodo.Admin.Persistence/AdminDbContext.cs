@@ -1,3 +1,5 @@
+using Dominodo.Admin.Domain.Configuration;
+using Dominodo.Admin.Domain.Devices;
 using Dominodo.Admin.Domain.Notifications;
 using Dominodo.Shared.Kernel;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +12,12 @@ internal sealed class AdminDbContext(DbContextOptions<AdminDbContext> options)
     public const string Schema = "admin";
 
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
+    public DbSet<PushMessage> PushMessages => Set<PushMessage>();
+    public DbSet<DeviceRegistration> DeviceRegistrations => Set<DeviceRegistration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

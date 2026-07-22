@@ -28,3 +28,4 @@ historia y el razonamiento quedan aquí sin inflar el contexto del agente.
 | [0008](./0008-rbac-scope-y-autoridad-de-plataforma-por-dato.md) | RBAC: `Role.Scope` y autoridad de plataforma por dato (`PlatformRoleAssignment`) | Accepted |
 | [0009](./0009-bus-de-mensajeria-wolverine.md) | Bus de mensajería: Wolverine (reemplaza a MassTransit) | Accepted |
 | [0010](./0010-autorizacion-basada-en-recurso-propiedad.md) | Autorización basada en recurso (propiedad) | Proposed |
+| [0011](./0011-announcement-en-operations.md) | `Announcement` (comunicados) vive en `Operations`, no en `Admin` | Proposed |

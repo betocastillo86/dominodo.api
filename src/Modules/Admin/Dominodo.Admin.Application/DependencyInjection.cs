@@ -1,5 +1,8 @@
 using System.Reflection;
 using Dominodo.Admin.Application.Consumers;
+using Dominodo.Admin.Application.IntegrationBridges;
+using Dominodo.Admin.Application.ModuleApi;
+using Dominodo.Admin.Contracts;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +24,9 @@ public static class DependencyInjection
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(ApplicationAssembly));
         services.AddValidatorsFromAssembly(ApplicationAssembly, includeInternalTypes: true);
 
+        // Public facade — cross-module reads of configuration (domain-model §4.4).
+        services.AddScoped<IAdminModuleApi, AdminModuleApi>();
+
         return services;
     }
 
@@ -30,5 +36,7 @@ public static class DependencyInjection
     public static void AddAdminHandlers(this HandlerDiscovery discovery)
     {
         discovery.IncludeType<UserOtpRequestedHandler>();
+        discovery.IncludeType<WhenSystemSettingChanged_PublishIntegrationEvent>();
+        discovery.IncludeType<TenantCreatedConsumer>();
     }
 }
