@@ -56,7 +56,8 @@ public static class UsersSeedData
         new(18, PermissionCodes.SettingsEdit,        "Editar configuración.",                 "Administración"),
         new(19, PermissionCodes.NotificationsView,   "Ver notificaciones.",                   "Notificaciones"),
         new(20, PermissionCodes.NotificationsCreate, "Crear notificaciones.",                 "Notificaciones"),
-        new(21, PermissionCodes.NotificationsEdit,   "Editar notificaciones.",                "Notificaciones")
+        new(21, PermissionCodes.NotificationsEdit,   "Editar notificaciones.",                "Notificaciones"),
+        new(22, PermissionCodes.UsersView,           "Ver usuarios.",                          "Usuarios")
     };
 
     // SuperAdmin gets every permission; other roles get tenant-scoped grants per their responsibilities.

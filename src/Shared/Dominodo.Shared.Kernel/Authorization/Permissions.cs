@@ -8,6 +8,7 @@ public static class Permissions
 {
     // Usuarios
     public const string UsersManage = "users.manage";
+    public const string UsersView   = "users.view";
     public const string RolesManage = "roles.manage";
 
     // Solicitudes (PQRS)

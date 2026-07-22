@@ -43,6 +43,7 @@ public static class DominodoConstants
         public const string ApartmentsCreate    = "apartments.create";
         public const string ApartmentsView      = "apartments.view";
         public const string ApartmentsEdit      = "apartments.edit";
+        public const string UsersView           = "users.view";
     }
 
     public static class Defaults
@@ -82,6 +83,7 @@ public static class DominodoConstants
             ["notifications.view"]   = Guid.Parse("00000000-0000-0000-0000-000000001019"),
             ["notifications.create"] = Guid.Parse("00000000-0000-0000-0000-000000001020"),
             ["notifications.edit"]   = Guid.Parse("00000000-0000-0000-0000-000000001021"),
+            ["users.view"]           = Guid.Parse("00000000-0000-0000-0000-000000001022"),
         };
 
         public static Guid UserIdFor(string permission) =>

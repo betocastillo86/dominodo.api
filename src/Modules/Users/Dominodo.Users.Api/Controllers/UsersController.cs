@@ -1,7 +1,12 @@
+using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Infrastructure.Http;
+using Dominodo.Shared.Kernel.Authorization;
+using Dominodo.Shared.Kernel.Pagination;
 using Dominodo.Users.Application.Users.GetUserById;
+using Dominodo.Users.Application.Users.ListUsers;
 using Dominodo.Users.Application.Users.RegisterUser;
 using Dominodo.Users.Contracts;
+using Dominodo.Users.Domain.Users;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -42,6 +47,30 @@ public sealed class UsersController(ISender sender) : ControllerBase
     public async Task<IResult> GetById(Guid id, CancellationToken ct)
     {
         var result = await sender.Send(new GetUserByIdQuery(id), ct);
+        return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
+    }
+
+    [HttpGet]
+    [HasPermission(Permissions.UsersView)]
+    [EndpointSummary("Lists users, paged and filterable (admin).")]
+    [ProducesResponseType(typeof(PagedResult<UserListItemDto>), StatusCodes.Status200OK)]
+    public async Task<IResult> List(
+        [FromQuery] Guid? tenantId = null,
+        [FromQuery] string? name = null,
+        [FromQuery] string? email = null,
+        [FromQuery] string? phone = null,
+        [FromQuery] UserStatus? status = null,
+        [FromQuery] string? documentNumber = null,
+        [FromQuery] bool? phoneVerified = null,
+        [FromQuery] bool? emailVerified = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await sender.Send(
+            new ListUsersQuery(tenantId, name, email, phone, status, documentNumber, phoneVerified, emailVerified, page, pageSize),
+            ct);
+
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
 }
