@@ -53,7 +53,8 @@ dominodo.api/
 │   │   ├── Dominodo.Adapters.WhatsApp
 │   │   ├── Dominodo.Adapters.Push
 │   │   └── Dominodo.Adapters.Storage
-│   └── Modules/
+│   └── Modules/                     # implemented today: Users, Tenants, Admin, Operations
+│       │                            #   (Operations = Requests/PQRS, Deliveries, Visits, Announcements)
 │       └── <Module>/
 │           ├── Dominodo.<Module>.Domain        # aggregates, value objects, domain events,
 │           │                                   #   domain-owned ports (e.g. IPqrRepository)

@@ -27,6 +27,12 @@ public static class SwaggerExtensions
                 ? $"{api.ActionDescriptor.RouteValues["controller"]}_{action}"
                 : null);
 
+            // Disambiguate schema ids by module area. Default schemaIds use the bare type name, which
+            // collides across modules that legitimately own same-named types (e.g. Admin's DeliveryStatus
+            // vs Operations' DeliveryStatus). Prefixing the Dominodo area keeps ids unique and stable as
+            // the monolith grows. Generics are flattened recursively (PagedResult<RequestDto> → …).
+            options.CustomSchemaIds(SchemaId);
+
             options.OperationFilter<SwaggerDefaultValuesFilter>();
             options.OperationFilter<TenantHeaderFilter>();
             options.OperationFilter<AuthResponsesOperationFilter>();
@@ -56,6 +62,30 @@ public static class SwaggerExtensions
         });
 
         return services;
+    }
+
+    // Unique, readable schema id: <Area><TypeName>, where Area is the first segment after "Dominodo."
+    // (Users/Tenants/Admin/Operations/Shared/Api). Recurses into generic arguments so closed generics
+    // (e.g. PagedResult<RequestDto>) produce a single flattened id.
+    private static string SchemaId(Type type)
+    {
+        if (type.IsGenericType)
+        {
+            var baseName = type.Name[..type.Name.IndexOf('`', StringComparison.Ordinal)];
+            var args = string.Concat(type.GetGenericArguments().Select(SchemaId));
+            return Area(type) + baseName + args;
+        }
+
+        return Area(type) + type.Name;
+    }
+
+    private static string Area(Type type)
+    {
+        const string root = "Dominodo.";
+        var ns = type.Namespace ?? string.Empty;
+        return ns.StartsWith(root, StringComparison.Ordinal)
+            ? ns[root.Length..].Split('.')[0]
+            : string.Empty;
     }
 
     public static WebApplication UseDominodoSwagger(this WebApplication app)

@@ -42,9 +42,9 @@
 7. **Ejemplar canónico (primer módulo escrito a mano): `Users`** — con usuarios ya se pueden crear
    tenants después.
 
-## Estado de implementación (MVP slice, 2026-07-19)
+## Estado de implementación (MVP slice, 2026-07-22)
 
-Implementado y verificado en el host (`Users` + `Admin` + `Tenants`); el resto del modelo sigue siendo diseño.
+Implementado y verificado en el host (`Users` + `Admin` + `Tenants` + `Operations`); el resto del modelo sigue siendo diseño.
 
 - **`Tenants`:** módulo completo — `Tenant` (§2.1, con `Slug` único/inmutable), `Apartment` (§2.3,
   primer `ITenantOwned`), `ApartmentResident` (§2.4, entidad hija, multipropietario) y `TenantFeature`
@@ -60,9 +60,19 @@ Implementado y verificado en el host (`Users` + `Admin` + `Tenants`); el resto d
   aceptar, cambiar rol, suspender/reactivar, remover), permiso `memberships.manage` sembrado a
   `Administrador`, e integration events (`§1.9`) vía outbox Wolverine. Esto enciende la rama tenant de la
   resolución de permisos (doc 12).
+- **`Operations`:** módulo completo — cuatro agregados `ITenantOwned` en el schema `operations`:
+  `Request` (§3.1, PQRS con hijos `RequestParticipant`/`RequestUpdate`/`RequestAttachment`/
+  `RequestStatusHistory`, ciclo de vida y `Code` legible `SOL-YYYY-NNNN`), `Delivery` (§3.2, `PAQ-YYYY-NNNN`),
+  `Visit` (§3.3, sin `Code`) y `Announcement` (§3.4, **con la columna nueva `Category`** free-form
+  filtrable + `/announcements/mine`). Códigos legibles por contador atómico por tenant
+  (`OperationSequence`, §5.2). Permisos granulares (`requests.*`/`deliveries.*`/`visits.*`/
+  `announcements.*`), lecturas por propiedad vía `IResourceAccessAuthorizer` (solicitud propia/
+  participante; delivery/visit del residente del apartamento). Fachada `IOperationsModuleApi` (§3.5) e
+  integration events (§3.6) publicados vía outbox Wolverine.
 - **`Admin`:** **Diseño pendiente:** los consumers de `§4.5` que reaccionan a integration events de
-  `Operations` (`RequestOpened`/`DeliveryRegistered`/`VisitRegistered`/`AnnouncementPublished`) — el módulo
-  `Operations` y su `Contracts` aún no existen.
+  `Operations` (`RequestOpened`/`DeliveryRegistered`/`VisitRegistered`/`AnnouncementPublished`) — ahora
+  que `Operations.Contracts` existe, quedan como follow-up Admin-scoped: cablearlos en `AddAdminHandlers`
+  siguiendo el patrón del `TenantCreatedConsumer` (§5.3).
 - **Modelo de token (hoy):** el access token es **tenant-agnostic** — lleva `sub = userId` + un claim
   `role` **por cada rol de ámbito `Platform`** del usuario, resuelto desde sus filas
   `PlatformRoleAssignment` (`§1.5`); el `role=SuperAdmin` del bootstrap sale de dato, no de código. **No
@@ -457,6 +467,7 @@ notificaciones transaccionales.
 | `Id` | `Guid` | |
 | `TenantId` | `Guid` | `ITenantOwned` |
 | `Title` / `Body` | `string` | |
+| `Category` | `string?` | **Libre por conjunto**, filtrable ⇒ **columna** (no JSON). Filtra `/mine` vía `?category=` |
 | `Priority` | `byte` | **Escala numérica** de orden de despliegue; **0 = prioridad máxima** |
 | `PublishedAtUtc` | `DateTimeOffset?` | |
 | `ExpiresAtUtc` | `DateTimeOffset?` | **Tiempo de vida**: tras esta fecha deja de mostrarse |

@@ -29,3 +29,4 @@ historia y el razonamiento quedan aquí sin inflar el contexto del agente.
 | [0009](./0009-bus-de-mensajeria-wolverine.md) | Bus de mensajería: Wolverine (reemplaza a MassTransit) | Accepted |
 | [0010](./0010-autorizacion-basada-en-recurso-propiedad.md) | Autorización basada en recurso (propiedad) | Proposed |
 | [0011](./0011-announcement-en-operations.md) | `Announcement` (comunicados) vive en `Operations`, no en `Admin` | Proposed |
+| [0012](./0012-permisos-granulares-operations-y-creacion-por-membresia.md) | Permisos granulares de Operations y creación de solicitud por membresía | Proposed |

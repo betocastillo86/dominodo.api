@@ -33,6 +33,13 @@ internal sealed class ApartmentRepository(TenantsDbContext db, ITenantContext te
     public Task<bool> ExistsForTenantAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default) =>
         db.Apartments.AnyAsync(a => a.Id == id && a.TenantId == tenantId, cancellationToken);
 
+    public async Task<IReadOnlyList<Apartment>> ListForResidentAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        await db.Apartments
+            .ForCurrentTenant(tenant)
+            .Where(a => a.Residents.Any(r => r.UserId == userId && r.IsActive))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
     public async Task<(IReadOnlyList<Apartment> Items, long TotalCount)> ListAsync(
         PageRequest page,
         string? tower,

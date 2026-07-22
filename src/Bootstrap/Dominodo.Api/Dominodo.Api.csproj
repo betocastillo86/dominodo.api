@@ -40,6 +40,9 @@
     <ProjectReference Include="..\..\Modules\Tenants\Dominodo.Tenants.Api\Dominodo.Tenants.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Tenants\Dominodo.Tenants.Application\Dominodo.Tenants.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Tenants\Dominodo.Tenants.Persistence\Dominodo.Tenants.Persistence.csproj" />
+    <ProjectReference Include="..\..\Modules\Operations\Dominodo.Operations.Api\Dominodo.Operations.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Operations\Dominodo.Operations.Application\Dominodo.Operations.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\Operations\Dominodo.Operations.Persistence\Dominodo.Operations.Persistence.csproj" />
   </ItemGroup>
 
   <ItemGroup Label="Adapters">

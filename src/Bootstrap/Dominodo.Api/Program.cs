@@ -3,6 +3,8 @@ using Dominodo.Adapters.WhatsApp;
 using Dominodo.Admin.Application;
 using Dominodo.Admin.Persistence;
 using Dominodo.Api;
+using Dominodo.Operations.Application;
+using Dominodo.Operations.Persistence;
 using Dominodo.Shared.Application;
 using Dominodo.Shared.Infrastructure;
 using Dominodo.Shared.Infrastructure.Http;
@@ -38,6 +40,8 @@ builder.Services.AddAdminModule(builder.Configuration);
 builder.Services.AddAdminPersistence();
 builder.Services.AddTenantsModule(builder.Configuration);
 builder.Services.AddTenantsPersistence();
+builder.Services.AddOperationsModule();
+builder.Services.AddOperationsPersistence();
 
 // Permission resolution port (doc 12) — implemented here because it bridges to the Users facade,
 // which Shared.Infrastructure may not reference. Cached per (userId, tenant) with a short TTL.
@@ -77,12 +81,14 @@ builder.Host.UseWolverine(opts =>
     opts.AddUsersMessaging(wolverineConnectionString);
     opts.AddAdminMessaging(wolverineConnectionString);
     opts.AddTenantsMessaging(wolverineConnectionString);
+    opts.AddOperationsMessaging(wolverineConnectionString);
 
     // module message handlers are internal; register them explicitly (conventional discovery skips
     // non-public types). IncludeType bypasses that filter.
     opts.Discovery.AddAdminHandlers();
     opts.Discovery.AddTenantsHandlers();
     opts.Discovery.AddUsersHandlers();
+    opts.Discovery.AddOperationsHandlers();
 
     // Host-side consumer: evicts the permission-cache entry on any membership change (doc 12).
     opts.Discovery.IncludeType<Dominodo.Api.Auth.WhenMembershipChanged_InvalidatePermissionCache>();
@@ -110,7 +116,8 @@ builder.Services
     // Module controllers live in each module's *.Api assembly — register them as parts.
     .AddApplicationPart(typeof(Dominodo.Users.Api.IUsersApiMarker).Assembly)
     .AddApplicationPart(typeof(Dominodo.Tenants.Api.ITenantsApiMarker).Assembly)
-    .AddApplicationPart(typeof(Dominodo.Admin.Api.IAdminApiMarker).Assembly);
+    .AddApplicationPart(typeof(Dominodo.Admin.Api.IAdminApiMarker).Assembly)
+    .AddApplicationPart(typeof(Dominodo.Operations.Api.IOperationsApiMarker).Assembly);
 
 // Controller actions return IResult (Results.Ok/…), which serialize through the Http.Json options
 // rather than the MVC ones above — register the converter here too so enum-typed DTOs serialize as names.

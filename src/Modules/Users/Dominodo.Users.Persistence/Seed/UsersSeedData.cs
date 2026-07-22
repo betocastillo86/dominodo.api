@@ -38,12 +38,6 @@ public static class UsersSeedData
     {
         new(1,  PermissionCodes.UsersManage,         "Gestionar usuarios.",                   "Usuarios"),
         new(2,  PermissionCodes.RolesManage,         "Gestionar roles y permisos.",           "Usuarios"),
-        new(3,  PermissionCodes.RequestsCreate,      "Crear solicitudes (PQRS).",             "Solicitudes"),
-        new(4,  PermissionCodes.RequestsManage,      "Gestionar solicitudes (PQRS).",         "Solicitudes"),
-        new(5,  PermissionCodes.DeliveriesRegister,  "Registrar paquetería.",                 "Paquetería"),
-        new(6,  PermissionCodes.DeliveriesManage,    "Gestionar paquetería.",                 "Paquetería"),
-        new(7,  PermissionCodes.VisitsRegister,      "Registrar visitas.",                    "Visitas"),
-        new(8,  PermissionCodes.AnnouncementsManage, "Gestionar boletines.",                  "Comunicaciones"),
         new(9,  PermissionCodes.SettingsView,        "Ver configuración.",                    "Administración"),
         new(10, PermissionCodes.TenantsCreate,       "Crear conjuntos residenciales.",        "Plataforma"),
         new(11, PermissionCodes.TenantsView,         "Ver conjuntos residenciales.",          "Plataforma"),
@@ -57,7 +51,22 @@ public static class UsersSeedData
         new(19, PermissionCodes.NotificationsView,   "Ver notificaciones.",                   "Notificaciones"),
         new(20, PermissionCodes.NotificationsCreate, "Crear notificaciones.",                 "Notificaciones"),
         new(21, PermissionCodes.NotificationsEdit,   "Editar notificaciones.",                "Notificaciones"),
-        new(22, PermissionCodes.UsersView,           "Ver usuarios.",                          "Usuarios")
+        new(22, PermissionCodes.UsersView,           "Ver usuarios.",                          "Usuarios"),
+        // Operations — granular catalog (replaces the coarse ids 3–8; appended as 23–35 to keep the
+        // E2E fixture-id template …10{Id:D2} 2-digit-safe and unrelated ids stable).
+        new(23, PermissionCodes.RequestsView,        "Ver solicitudes (PQRS).",               "Solicitudes"),
+        new(24, PermissionCodes.RequestsEdit,        "Editar solicitudes (PQRS).",            "Solicitudes"),
+        new(25, PermissionCodes.RequestsManage,      "Gestionar el ciclo de vida de solicitudes (PQRS).", "Solicitudes"),
+        new(26, PermissionCodes.RequestsDelete,      "Eliminar o cancelar solicitudes (PQRS).", "Solicitudes"),
+        new(27, PermissionCodes.DeliveriesView,      "Ver paquetería.",                       "Paquetería"),
+        new(28, PermissionCodes.DeliveriesEdit,      "Editar y cambiar el estado de paquetería.", "Paquetería"),
+        new(29, PermissionCodes.DeliveriesCreate,    "Registrar paquetería.",                 "Paquetería"),
+        new(30, PermissionCodes.VisitsView,          "Ver visitas.",                          "Visitas"),
+        new(31, PermissionCodes.VisitsEdit,          "Editar y cambiar el estado de visitas.", "Visitas"),
+        new(32, PermissionCodes.VisitsCreate,        "Registrar visitas.",                    "Visitas"),
+        new(33, PermissionCodes.AnnouncementsView,   "Ver comunicados (incl. borradores).",   "Comunicaciones"),
+        new(34, PermissionCodes.AnnouncementsEdit,   "Editar, publicar y archivar comunicados.", "Comunicaciones"),
+        new(35, PermissionCodes.AnnouncementsCreate, "Crear borradores de comunicados.",      "Comunicaciones")
     };
 
     // SuperAdmin gets every permission; other roles get tenant-scoped grants per their responsibilities.
@@ -71,9 +80,44 @@ public static class UsersSeedData
             .Append(new RolePermission(AdministradorRoleId, 19))
             .Append(new RolePermission(AdministradorRoleId, 20))
             .Append(new RolePermission(AdministradorRoleId, 21))
+            // Administrador: all 13 Operations permissions (23–35)
+            .Append(new RolePermission(AdministradorRoleId, 23))
+            .Append(new RolePermission(AdministradorRoleId, 24))
+            .Append(new RolePermission(AdministradorRoleId, 25))
+            .Append(new RolePermission(AdministradorRoleId, 26))
+            .Append(new RolePermission(AdministradorRoleId, 27))
+            .Append(new RolePermission(AdministradorRoleId, 28))
+            .Append(new RolePermission(AdministradorRoleId, 29))
+            .Append(new RolePermission(AdministradorRoleId, 30))
+            .Append(new RolePermission(AdministradorRoleId, 31))
+            .Append(new RolePermission(AdministradorRoleId, 32))
+            .Append(new RolePermission(AdministradorRoleId, 33))
+            .Append(new RolePermission(AdministradorRoleId, 34))
+            .Append(new RolePermission(AdministradorRoleId, 35))
             // AsistenteAdministracion: notifications view + create
             .Append(new RolePermission(AsistenteAdministracionRoleId, 19))
             .Append(new RolePermission(AsistenteAdministracionRoleId, 20))
+            // AsistenteAdministracion: all Operations except requests.delete (26)
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 23))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 24))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 25))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 27))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 28))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 29))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 30))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 31))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 32))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 33))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 34))
+            .Append(new RolePermission(AsistenteAdministracionRoleId, 35))
+            // Vigilante: deliveries.{view,edit,create} (27–29) + visits.{view,edit,create} (30–32)
+            .Append(new RolePermission(VigilanteRoleId, 27))
+            .Append(new RolePermission(VigilanteRoleId, 28))
+            .Append(new RolePermission(VigilanteRoleId, 29))
+            .Append(new RolePermission(VigilanteRoleId, 30))
+            .Append(new RolePermission(VigilanteRoleId, 31))
+            .Append(new RolePermission(VigilanteRoleId, 32))
+            // Residente: no permission grants — relies on ownership + membership-gated create + /mine
             .ToList();
 
     // The bootstrap SuperAdmin is assigned the Platform-scope SuperAdmin role via data, not code.

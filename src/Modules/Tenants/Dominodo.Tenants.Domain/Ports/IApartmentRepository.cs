@@ -15,6 +15,9 @@ public interface IApartmentRepository
     // TenantId, and both must match, so there is no cross-tenant leakage. Used by ITenantsModuleApi.
     Task<bool> ExistsForTenantAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default);
     Task<bool> ExistsByTowerAndNumberAsync(string? tower, string number, CancellationToken cancellationToken = default);
+
+    // Apartments (current tenant) the user is an ACTIVE resident of. Backs the facade's audience resolution.
+    Task<IReadOnlyList<Apartment>> ListForResidentAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<Apartment> Items, long TotalCount)> ListAsync(
         PageRequest page,
         string? tower,

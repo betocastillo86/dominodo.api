@@ -12,18 +12,25 @@ public static class Permissions
     public const string RolesManage = "roles.manage";
 
     // Solicitudes (PQRS)
-    public const string RequestsCreate = "requests.create";
+    public const string RequestsView   = "requests.view";
+    public const string RequestsEdit   = "requests.edit";
     public const string RequestsManage = "requests.manage";
+    public const string RequestsDelete = "requests.delete";
 
     // Paquetería
-    public const string DeliveriesRegister = "deliveries.register";
-    public const string DeliveriesManage = "deliveries.manage";
+    public const string DeliveriesView   = "deliveries.view";
+    public const string DeliveriesEdit   = "deliveries.edit";
+    public const string DeliveriesCreate = "deliveries.create";
 
     // Visitas
-    public const string VisitsRegister = "visits.register";
+    public const string VisitsView   = "visits.view";
+    public const string VisitsEdit   = "visits.edit";
+    public const string VisitsCreate = "visits.create";
 
     // Comunicaciones
-    public const string AnnouncementsManage = "announcements.manage";
+    public const string AnnouncementsView   = "announcements.view";
+    public const string AnnouncementsEdit   = "announcements.edit";
+    public const string AnnouncementsCreate = "announcements.create";
 
     // Administración
     public const string SettingsView   = "settings.view";

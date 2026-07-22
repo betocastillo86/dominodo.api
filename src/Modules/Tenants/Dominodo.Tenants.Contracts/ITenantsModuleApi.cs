@@ -10,4 +10,8 @@ public interface ITenantsModuleApi
     Task<bool> ApartmentExistsAsync(Guid id, Guid tenantId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ResidentDto>> GetApartmentResidentsAsync(Guid apartmentId, CancellationToken cancellationToken = default);
     Task<bool> IsFeatureEnabledAsync(Guid tenantId, string featureKey, CancellationToken cancellationToken = default);
+
+    // The apartments (+ towers) the user is an ACTIVE resident of, scoped to the caller's current tenant.
+    // Powers announcement audience matching (ByTower/ByApartments) in Operations (domain-model §3.4).
+    Task<IReadOnlyList<ResidentApartmentDto>> GetApartmentsForResidentAsync(Guid userId, CancellationToken cancellationToken = default);
 }

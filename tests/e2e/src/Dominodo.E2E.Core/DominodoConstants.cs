@@ -22,28 +22,36 @@ public static class DominodoConstants
     // Use these instead of raw string literals in token factories and test assertions.
     public static class Permission
     {
-        public const string UsersManage         = "users.manage";
-        public const string RolesManage         = "roles.manage";
-        public const string RequestsCreate      = "requests.create";
-        public const string RequestsManage      = "requests.manage";
-        public const string DeliveriesRegister  = "deliveries.register";
-        public const string DeliveriesManage    = "deliveries.manage";
-        public const string VisitsRegister      = "visits.register";
-        public const string AnnouncementsManage = "announcements.manage";
-        public const string SettingsView        = "settings.view";
-        public const string SettingsCreate      = "settings.create";
-        public const string SettingsEdit        = "settings.edit";
-        public const string NotificationsView   = "notifications.view";
-        public const string NotificationsCreate = "notifications.create";
-        public const string NotificationsEdit   = "notifications.edit";
-        public const string TenantsCreate       = "tenants.create";
-        public const string TenantsView         = "tenants.view";
-        public const string TenantsEdit         = "tenants.edit";
-        public const string MembershipsManage   = "memberships.manage";
-        public const string ApartmentsCreate    = "apartments.create";
-        public const string ApartmentsView      = "apartments.view";
-        public const string ApartmentsEdit      = "apartments.edit";
-        public const string UsersView           = "users.view";
+        public const string UsersManage          = "users.manage";
+        public const string RolesManage          = "roles.manage";
+        public const string SettingsView         = "settings.view";
+        public const string SettingsCreate       = "settings.create";
+        public const string SettingsEdit         = "settings.edit";
+        public const string NotificationsView    = "notifications.view";
+        public const string NotificationsCreate  = "notifications.create";
+        public const string NotificationsEdit    = "notifications.edit";
+        public const string TenantsCreate        = "tenants.create";
+        public const string TenantsView          = "tenants.view";
+        public const string TenantsEdit          = "tenants.edit";
+        public const string MembershipsManage    = "memberships.manage";
+        public const string ApartmentsCreate     = "apartments.create";
+        public const string ApartmentsView       = "apartments.view";
+        public const string ApartmentsEdit       = "apartments.edit";
+        public const string UsersView            = "users.view";
+        // Operations — granular catalog
+        public const string RequestsView         = "requests.view";
+        public const string RequestsEdit         = "requests.edit";
+        public const string RequestsManage       = "requests.manage";
+        public const string RequestsDelete       = "requests.delete";
+        public const string DeliveriesView       = "deliveries.view";
+        public const string DeliveriesEdit       = "deliveries.edit";
+        public const string DeliveriesCreate     = "deliveries.create";
+        public const string VisitsView           = "visits.view";
+        public const string VisitsEdit           = "visits.edit";
+        public const string VisitsCreate         = "visits.create";
+        public const string AnnouncementsView    = "announcements.view";
+        public const string AnnouncementsEdit    = "announcements.edit";
+        public const string AnnouncementsCreate  = "announcements.create";
     }
 
     public static class Defaults
@@ -64,12 +72,6 @@ public static class DominodoConstants
         {
             ["users.manage"]         = Guid.Parse("00000000-0000-0000-0000-000000001001"),
             ["roles.manage"]         = Guid.Parse("00000000-0000-0000-0000-000000001002"),
-            ["requests.create"]      = Guid.Parse("00000000-0000-0000-0000-000000001003"),
-            ["requests.manage"]      = Guid.Parse("00000000-0000-0000-0000-000000001004"),
-            ["deliveries.register"]  = Guid.Parse("00000000-0000-0000-0000-000000001005"),
-            ["deliveries.manage"]    = Guid.Parse("00000000-0000-0000-0000-000000001006"),
-            ["visits.register"]      = Guid.Parse("00000000-0000-0000-0000-000000001007"),
-            ["announcements.manage"] = Guid.Parse("00000000-0000-0000-0000-000000001008"),
             ["settings.view"]        = Guid.Parse("00000000-0000-0000-0000-000000001009"),
             ["tenants.create"]       = Guid.Parse("00000000-0000-0000-0000-000000001010"),
             ["tenants.view"]         = Guid.Parse("00000000-0000-0000-0000-000000001011"),
@@ -84,6 +86,19 @@ public static class DominodoConstants
             ["notifications.create"] = Guid.Parse("00000000-0000-0000-0000-000000001020"),
             ["notifications.edit"]   = Guid.Parse("00000000-0000-0000-0000-000000001021"),
             ["users.view"]           = Guid.Parse("00000000-0000-0000-0000-000000001022"),
+            ["requests.view"]        = Guid.Parse("00000000-0000-0000-0000-000000001023"),
+            ["requests.edit"]        = Guid.Parse("00000000-0000-0000-0000-000000001024"),
+            ["requests.manage"]      = Guid.Parse("00000000-0000-0000-0000-000000001025"),
+            ["requests.delete"]      = Guid.Parse("00000000-0000-0000-0000-000000001026"),
+            ["deliveries.view"]      = Guid.Parse("00000000-0000-0000-0000-000000001027"),
+            ["deliveries.edit"]      = Guid.Parse("00000000-0000-0000-0000-000000001028"),
+            ["deliveries.create"]    = Guid.Parse("00000000-0000-0000-0000-000000001029"),
+            ["visits.view"]          = Guid.Parse("00000000-0000-0000-0000-000000001030"),
+            ["visits.edit"]          = Guid.Parse("00000000-0000-0000-0000-000000001031"),
+            ["visits.create"]        = Guid.Parse("00000000-0000-0000-0000-000000001032"),
+            ["announcements.view"]   = Guid.Parse("00000000-0000-0000-0000-000000001033"),
+            ["announcements.edit"]   = Guid.Parse("00000000-0000-0000-0000-000000001034"),
+            ["announcements.create"] = Guid.Parse("00000000-0000-0000-0000-000000001035"),
         };
 
         public static Guid UserIdFor(string permission) =>
@@ -100,12 +115,6 @@ public static class DominodoConstants
         {
             ["users.manage"]         = Guid.Parse("00000000-0000-0000-0000-000000001101"),
             ["roles.manage"]         = Guid.Parse("00000000-0000-0000-0000-000000001102"),
-            ["requests.create"]      = Guid.Parse("00000000-0000-0000-0000-000000001103"),
-            ["requests.manage"]      = Guid.Parse("00000000-0000-0000-0000-000000001104"),
-            ["deliveries.register"]  = Guid.Parse("00000000-0000-0000-0000-000000001105"),
-            ["deliveries.manage"]    = Guid.Parse("00000000-0000-0000-0000-000000001106"),
-            ["visits.register"]      = Guid.Parse("00000000-0000-0000-0000-000000001107"),
-            ["announcements.manage"] = Guid.Parse("00000000-0000-0000-0000-000000001108"),
             ["settings.view"]        = Guid.Parse("00000000-0000-0000-0000-000000001109"),
             ["tenants.create"]       = Guid.Parse("00000000-0000-0000-0000-000000001110"),
             ["tenants.view"]         = Guid.Parse("00000000-0000-0000-0000-000000001111"),
@@ -119,6 +128,19 @@ public static class DominodoConstants
             ["notifications.view"]   = Guid.Parse("00000000-0000-0000-0000-000000001119"),
             ["notifications.create"] = Guid.Parse("00000000-0000-0000-0000-000000001120"),
             ["notifications.edit"]   = Guid.Parse("00000000-0000-0000-0000-000000001121"),
+            ["requests.view"]        = Guid.Parse("00000000-0000-0000-0000-000000001123"),
+            ["requests.edit"]        = Guid.Parse("00000000-0000-0000-0000-000000001124"),
+            ["requests.manage"]      = Guid.Parse("00000000-0000-0000-0000-000000001125"),
+            ["requests.delete"]      = Guid.Parse("00000000-0000-0000-0000-000000001126"),
+            ["deliveries.view"]      = Guid.Parse("00000000-0000-0000-0000-000000001127"),
+            ["deliveries.edit"]      = Guid.Parse("00000000-0000-0000-0000-000000001128"),
+            ["deliveries.create"]    = Guid.Parse("00000000-0000-0000-0000-000000001129"),
+            ["visits.view"]          = Guid.Parse("00000000-0000-0000-0000-000000001130"),
+            ["visits.edit"]          = Guid.Parse("00000000-0000-0000-0000-000000001131"),
+            ["visits.create"]        = Guid.Parse("00000000-0000-0000-0000-000000001132"),
+            ["announcements.view"]   = Guid.Parse("00000000-0000-0000-0000-000000001133"),
+            ["announcements.edit"]   = Guid.Parse("00000000-0000-0000-0000-000000001134"),
+            ["announcements.create"] = Guid.Parse("00000000-0000-0000-0000-000000001135"),
         };
 
         public static Guid TenantUserIdFor(string permission) =>

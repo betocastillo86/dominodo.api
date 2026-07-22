@@ -186,48 +186,6 @@ namespace Dominodo.Users.Persistence.Migrations
                         },
                         new
                         {
-                            Id = 3,
-                            Code = "requests.create",
-                            Description = "Crear solicitudes (PQRS).",
-                            Group = "Solicitudes"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Code = "requests.manage",
-                            Description = "Gestionar solicitudes (PQRS).",
-                            Group = "Solicitudes"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Code = "deliveries.register",
-                            Description = "Registrar paquetería.",
-                            Group = "Paquetería"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Code = "deliveries.manage",
-                            Description = "Gestionar paquetería.",
-                            Group = "Paquetería"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Code = "visits.register",
-                            Description = "Registrar visitas.",
-                            Group = "Visitas"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Code = "announcements.manage",
-                            Description = "Gestionar boletines.",
-                            Group = "Comunicaciones"
-                        },
-                        new
-                        {
                             Id = 9,
                             Code = "settings.view",
                             Description = "Ver configuración.",
@@ -323,6 +281,97 @@ namespace Dominodo.Users.Persistence.Migrations
                             Code = "users.view",
                             Description = "Ver usuarios.",
                             Group = "Usuarios"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Code = "requests.view",
+                            Description = "Ver solicitudes (PQRS).",
+                            Group = "Solicitudes"
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Code = "requests.edit",
+                            Description = "Editar solicitudes (PQRS).",
+                            Group = "Solicitudes"
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Code = "requests.manage",
+                            Description = "Gestionar el ciclo de vida de solicitudes (PQRS).",
+                            Group = "Solicitudes"
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Code = "requests.delete",
+                            Description = "Eliminar o cancelar solicitudes (PQRS).",
+                            Group = "Solicitudes"
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Code = "deliveries.view",
+                            Description = "Ver paquetería.",
+                            Group = "Paquetería"
+                        },
+                        new
+                        {
+                            Id = 28,
+                            Code = "deliveries.edit",
+                            Description = "Editar y cambiar el estado de paquetería.",
+                            Group = "Paquetería"
+                        },
+                        new
+                        {
+                            Id = 29,
+                            Code = "deliveries.create",
+                            Description = "Registrar paquetería.",
+                            Group = "Paquetería"
+                        },
+                        new
+                        {
+                            Id = 30,
+                            Code = "visits.view",
+                            Description = "Ver visitas.",
+                            Group = "Visitas"
+                        },
+                        new
+                        {
+                            Id = 31,
+                            Code = "visits.edit",
+                            Description = "Editar y cambiar el estado de visitas.",
+                            Group = "Visitas"
+                        },
+                        new
+                        {
+                            Id = 32,
+                            Code = "visits.create",
+                            Description = "Registrar visitas.",
+                            Group = "Visitas"
+                        },
+                        new
+                        {
+                            Id = 33,
+                            Code = "announcements.view",
+                            Description = "Ver comunicados (incl. borradores).",
+                            Group = "Comunicaciones"
+                        },
+                        new
+                        {
+                            Id = 34,
+                            Code = "announcements.edit",
+                            Description = "Editar, publicar y archivar comunicados.",
+                            Group = "Comunicaciones"
+                        },
+                        new
+                        {
+                            Id = 35,
+                            Code = "announcements.create",
+                            Description = "Crear borradores de comunicados.",
+                            Group = "Comunicaciones"
                         });
                 });
 
@@ -456,36 +505,6 @@ namespace Dominodo.Users.Persistence.Migrations
                         new
                         {
                             RoleId = 1,
-                            PermissionId = 3
-                        },
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 4
-                        },
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 5
-                        },
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 6
-                        },
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 7
-                        },
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 8
-                        },
-                        new
-                        {
-                            RoleId = 1,
                             PermissionId = 9
                         },
                         new
@@ -555,6 +574,71 @@ namespace Dominodo.Users.Persistence.Migrations
                         },
                         new
                         {
+                            RoleId = 1,
+                            PermissionId = 23
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 24
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 25
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 26
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 27
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 28
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 29
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 30
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 31
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 32
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 33
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 34
+                        },
+                        new
+                        {
+                            RoleId = 1,
+                            PermissionId = 35
+                        },
+                        new
+                        {
                             RoleId = 2,
                             PermissionId = 13
                         },
@@ -590,6 +674,71 @@ namespace Dominodo.Users.Persistence.Migrations
                         },
                         new
                         {
+                            RoleId = 2,
+                            PermissionId = 23
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 24
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 25
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 26
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 27
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 28
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 29
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 30
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 31
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 32
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 33
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 34
+                        },
+                        new
+                        {
+                            RoleId = 2,
+                            PermissionId = 35
+                        },
+                        new
+                        {
                             RoleId = 3,
                             PermissionId = 19
                         },
@@ -597,6 +746,96 @@ namespace Dominodo.Users.Persistence.Migrations
                         {
                             RoleId = 3,
                             PermissionId = 20
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 23
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 24
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 25
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 27
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 28
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 29
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 30
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 31
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 32
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 33
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 34
+                        },
+                        new
+                        {
+                            RoleId = 3,
+                            PermissionId = 35
+                        },
+                        new
+                        {
+                            RoleId = 4,
+                            PermissionId = 27
+                        },
+                        new
+                        {
+                            RoleId = 4,
+                            PermissionId = 28
+                        },
+                        new
+                        {
+                            RoleId = 4,
+                            PermissionId = 29
+                        },
+                        new
+                        {
+                            RoleId = 4,
+                            PermissionId = 30
+                        },
+                        new
+                        {
+                            RoleId = 4,
+                            PermissionId = 31
+                        },
+                        new
+                        {
+                            RoleId = 4,
+                            PermissionId = 32
                         });
                 });
 

@@ -15,6 +15,9 @@ public sealed class CrossModuleAndAdapterTests
     private static readonly Assembly TenantsApplication = typeof(Tenants.Application.DependencyInjection).Assembly;
     private static readonly Assembly TenantsDomain = typeof(Tenants.Domain.Tenants.Tenant).Assembly;
     private static readonly Assembly TenantsPersistence = typeof(Tenants.Persistence.DependencyInjection).Assembly;
+    private static readonly Assembly OperationsApplication = typeof(Operations.Application.DependencyInjection).Assembly;
+    private static readonly Assembly OperationsDomain = typeof(Operations.Domain.Requests.Request).Assembly;
+    private static readonly Assembly OperationsPersistence = typeof(Operations.Persistence.DependencyInjection).Assembly;
 
     private static readonly string[] UsersNonContracts =
         ["Dominodo.Users.Domain", "Dominodo.Users.Application", "Dominodo.Users.Persistence"];
@@ -22,6 +25,8 @@ public sealed class CrossModuleAndAdapterTests
         ["Dominodo.Admin.Domain", "Dominodo.Admin.Application", "Dominodo.Admin.Persistence"];
     private static readonly string[] TenantsNonContracts =
         ["Dominodo.Tenants.Domain", "Dominodo.Tenants.Application", "Dominodo.Tenants.Persistence"];
+    private static readonly string[] OperationsNonContracts =
+        ["Dominodo.Operations.Domain", "Dominodo.Operations.Application", "Dominodo.Operations.Persistence"];
     private static readonly string[] Adapters =
         ["Dominodo.Adapters.Email", "Dominodo.Adapters.WhatsApp"];
 
@@ -53,7 +58,8 @@ public sealed class CrossModuleAndAdapterTests
         var result = Types.InAssemblies(
                 [UsersApplication, UsersDomain, UsersPersistence,
                  AdminApplication, AdminDomain, AdminPersistence,
-                 TenantsApplication, TenantsDomain, TenantsPersistence])
+                 TenantsApplication, TenantsDomain, TenantsPersistence,
+                 OperationsApplication, OperationsDomain, OperationsPersistence])
             .ShouldNot()
             .HaveDependencyOnAny(Adapters)
             .GetResult();
@@ -89,9 +95,46 @@ public sealed class CrossModuleAndAdapterTests
     {
         var result = Types.InAssemblies(
                 [UsersApplication, UsersDomain, UsersPersistence,
-                 AdminApplication, AdminDomain, AdminPersistence])
+                 AdminApplication, AdminDomain, AdminPersistence,
+                 OperationsApplication, OperationsDomain, OperationsPersistence])
             .ShouldNot()
             .HaveDependencyOnAny(TenantsNonContracts)
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(because: string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Operations_MayOnlyReachTenants_ThroughItsContracts()
+    {
+        var result = Types.InAssemblies([OperationsApplication, OperationsDomain, OperationsPersistence])
+            .ShouldNot()
+            .HaveDependencyOnAny(TenantsNonContracts)
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(because: string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Operations_MayOnlyReachUsers_ThroughItsContracts()
+    {
+        var result = Types.InAssemblies([OperationsApplication, OperationsDomain, OperationsPersistence])
+            .ShouldNot()
+            .HaveDependencyOnAny(UsersNonContracts)
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(because: string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void OtherModules_MayOnlyReachOperations_ThroughItsContracts()
+    {
+        var result = Types.InAssemblies(
+                [UsersApplication, UsersDomain, UsersPersistence,
+                 AdminApplication, AdminDomain, AdminPersistence,
+                 TenantsApplication, TenantsDomain, TenantsPersistence])
+            .ShouldNot()
+            .HaveDependencyOnAny(OperationsNonContracts)
             .GetResult();
 
         result.IsSuccessful.Should().BeTrue(because: string.Join(", ", result.FailingTypeNames ?? []));

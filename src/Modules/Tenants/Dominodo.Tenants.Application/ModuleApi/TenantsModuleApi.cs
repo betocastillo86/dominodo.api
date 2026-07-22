@@ -55,6 +55,15 @@ internal sealed class TenantsModuleApi(
         return tenant?.IsFeatureEnabled(key) ?? false;
     }
 
+    public async Task<IReadOnlyList<ResidentApartmentDto>> GetApartmentsForResidentAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        // Scoped to the caller's current tenant (repository funnels through ForCurrentTenant).
+        var residentApartments = await apartments.ListForResidentAsync(userId, cancellationToken);
+        return residentApartments.Select(a => new ResidentApartmentDto(a.Id, a.Tower)).ToList();
+    }
+
     private static TenantDto ToDto(Tenant tenant) => new(
         tenant.Id,
         tenant.Slug,

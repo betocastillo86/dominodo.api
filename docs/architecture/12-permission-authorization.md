@@ -222,7 +222,7 @@ belongs to *many* tenants). The revised rule:
 
 ## Permission catalog & naming
 
-- Codes are lowercase, dotted `resource.action`: `users.manage`, `requests.create`, `deliveries.register`.
+- Codes are lowercase, dotted `resource.action`: `users.manage`, `requests.view`, `deliveries.create`.
 - The catalog is seeded in Users; **every code has a matching constant in `Permissions`** — controllers
   reference the constant, never a literal.
 - New permission → add to the Users seed **and** the `Permissions` constants in the same change.

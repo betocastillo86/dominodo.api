@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net.Sockets;
 using Dominodo.Admin.Persistence;
+using Dominodo.Operations.Persistence;
 using Dominodo.Tenants.Persistence;
 using Dominodo.Users.Persistence;
 
@@ -40,6 +41,7 @@ internal static class DevBootstrap
         await MigrateAsync(logger, "Users", app.Services.MigrateUsersDatabaseAsync);
         await MigrateAsync(logger, "Admin", app.Services.MigrateAdminDatabaseAsync);
         await MigrateAsync(logger, "Tenants", app.Services.MigrateTenantsDatabaseAsync);
+        await MigrateAsync(logger, "Operations", app.Services.MigrateOperationsDatabaseAsync);
     }
 
     private static async Task MigrateAsync(ILogger logger, string module, Func<CancellationToken, Task> migrate)
