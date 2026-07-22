@@ -12,7 +12,7 @@ soporte; separarlos en dos módulos atómicos agrega andamiaje sin beneficio cla
 ## Decisión
 
 - Un solo módulo **`Admin`** (schema `admin`, un `DbContext`) que contiene:
-  - Notificaciones: `NotificationTemplate`, mensajes materializados (`UserNotification`,
+  - Notificaciones: `NotificationTemplate`, mensajes materializados (`InAppMessage`,
     `EmailMessage`, `PushMessage`), `Announcement` (boletín), `DeviceRegistration`.
   - Configuración: `SystemSetting` (key/value, global + override por tenant, con caché invalidada por
     evento).

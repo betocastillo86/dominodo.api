@@ -4,6 +4,7 @@ using Dominodo.Admin.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dominodo.Admin.Persistence.Migrations
 {
     [DbContext(typeof(AdminDbContext))]
-    partial class AdminDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260722155953_ReplaceTemplateChannelsWithPerChannelFlags")]
+    partial class ReplaceTemplateChannelsWithPerChannelFlags
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -141,7 +144,7 @@ namespace Dominodo.Admin.Persistence.Migrations
                     b.ToTable("EmailMessages", "admin");
                 });
 
-            modelBuilder.Entity("Dominodo.Admin.Domain.Notifications.InAppMessage", b =>
+            modelBuilder.Entity("Dominodo.Admin.Domain.Notifications.UserNotification", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -190,7 +193,7 @@ namespace Dominodo.Admin.Persistence.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("InAppMessages", "admin");
+                    b.ToTable("UserNotifications", "admin");
                 });
 
             modelBuilder.Entity("Dominodo.Admin.Domain.Notifications.NotificationDelivery", b =>

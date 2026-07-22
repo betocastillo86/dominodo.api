@@ -1,12 +1,14 @@
 namespace Dominodo.Admin.Contracts;
 
 // Public representation of a notification template (domain-model §4.1). TenantId null = global default.
-// Channels is the [Flags] value rendered as a comma-separated string (e.g. "Email, InApp").
+// Each channel is an independent on/off toggle; IsActive is the master switch.
 public sealed record NotificationTemplateDto(
     Guid Id,
     Guid? TenantId,
     string Type,
-    string Channels,
+    bool EmailEnabled,
+    bool PushEnabled,
+    bool InAppEnabled,
     string? EmailSubject,
     string? EmailBodyHtml,
     string? InAppText,

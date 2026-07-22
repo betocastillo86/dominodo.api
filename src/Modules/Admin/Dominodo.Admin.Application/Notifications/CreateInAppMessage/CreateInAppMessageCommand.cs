@@ -4,21 +4,21 @@ using Dominodo.Shared.Kernel;
 using Dominodo.Shared.Kernel.Messaging;
 using FluentValidation;
 
-namespace Dominodo.Admin.Application.Notifications.CreateUserNotification;
+namespace Dominodo.Admin.Application.Notifications.CreateInAppMessage;
 
 // Admin side (notifications.create): materializes an in-app notification for a recipient. TenantId comes
 // from ITenantContext (recipients are tenant-scoped, so an X-Tenant is required); TriggeredByUserId is
 // the acting admin.
-internal sealed record CreateUserNotificationCommand(
+internal sealed record CreateInAppMessageCommand(
     Guid RecipientUserId,
     string Type,
     string Title,
     string Body,
     string? TargetUrl) : ICommand<Guid>;
 
-internal sealed class CreateUserNotificationCommandValidator : AbstractValidator<CreateUserNotificationCommand>
+internal sealed class CreateInAppMessageCommandValidator : AbstractValidator<CreateInAppMessageCommand>
 {
-    public CreateUserNotificationCommandValidator()
+    public CreateInAppMessageCommandValidator()
     {
         RuleFor(x => x.RecipientUserId).NotEmpty();
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
@@ -29,24 +29,24 @@ internal sealed class CreateUserNotificationCommandValidator : AbstractValidator
     }
 }
 
-internal sealed class CreateUserNotificationCommandHandler(
-    IUserNotificationRepository notifications,
+internal sealed class CreateInAppMessageCommandHandler(
+    IInAppMessageRepository notifications,
     ITenantContext tenant,
     ICurrentUser currentUser,
     IClock clock)
-    : ICommandHandler<CreateUserNotificationCommand, Guid>
+    : ICommandHandler<CreateInAppMessageCommand, Guid>
 {
-    public Task<Result<Guid>> Handle(CreateUserNotificationCommand command, CancellationToken ct)
+    public Task<Result<Guid>> Handle(CreateInAppMessageCommand command, CancellationToken ct)
     {
         if (!tenant.HasTenant)
         {
             return Task.FromResult<Result<Guid>>(
-                Error.Validation("UserNotification.TenantRequired", "An X-Tenant header is required to create a notification."));
+                Error.Validation("InAppMessage.TenantRequired", "An X-Tenant header is required to create a notification."));
         }
 
         var type = Enum.Parse<NotificationType>(command.Type);
 
-        var result = UserNotification.Create(
+        var result = InAppMessage.Create(
             tenant.TenantId,
             command.RecipientUserId,
             type,

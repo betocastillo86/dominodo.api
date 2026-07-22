@@ -54,14 +54,18 @@ internal sealed class SeedTenantDefaultsCommandHandler(
             var welcome = NotificationTemplate.Create(
                 command.TenantId,
                 NotificationType.Welcome,
-                NotificationChannel.Email | NotificationChannel.InApp);
+                emailEnabled: true,
+                pushEnabled: false,
+                inAppEnabled: true);
 
             welcome.UpdateContent(
-                NotificationChannel.Email | NotificationChannel.InApp,
+                emailEnabled: true,
                 emailSubject: "¡Bienvenido a tu conjunto!",
                 emailBodyHtml: "<p>Te damos la bienvenida a la plataforma de tu conjunto.</p>",
-                inAppText: "¡Bienvenido a tu conjunto!",
+                pushEnabled: false,
                 pushText: null,
+                inAppEnabled: true,
+                inAppText: "¡Bienvenido a tu conjunto!",
                 isActive: true,
                 localization: null);
 

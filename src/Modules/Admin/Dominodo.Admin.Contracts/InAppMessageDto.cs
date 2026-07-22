@@ -1,7 +1,7 @@
 namespace Dominodo.Admin.Contracts;
 
 // Public representation of a materialized in-app notification (domain-model §4.2).
-public sealed record UserNotificationDto(
+public sealed record InAppMessageDto(
     Guid Id,
     Guid TenantId,
     Guid RecipientUserId,

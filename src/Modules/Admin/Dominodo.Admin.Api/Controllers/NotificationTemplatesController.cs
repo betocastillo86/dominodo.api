@@ -44,7 +44,7 @@ public sealed class NotificationTemplatesController(ISender sender) : Controller
 
     [HttpPut("{id:guid}")]
     [HasPermission(Permissions.NotificationsEdit)]
-    [EndpointSummary("Updates a template's content/channels. The row must belong to the current scope (tenant override with X-Tenant, else the global default).")]
+    [EndpointSummary("Updates a template's content and per-channel toggles (EmailEnabled/PushEnabled/InAppEnabled). The row must belong to the current scope (tenant override with X-Tenant, else the global default).")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -54,7 +54,9 @@ public sealed class NotificationTemplatesController(ISender sender) : Controller
         var result = await sender.Send(
             new UpdateNotificationTemplateCommand(
                 id,
-                request.Channels,
+                request.EmailEnabled,
+                request.PushEnabled,
+                request.InAppEnabled,
                 request.EmailSubject,
                 request.EmailBodyHtml,
                 request.InAppText,
@@ -68,7 +70,9 @@ public sealed class NotificationTemplatesController(ISender sender) : Controller
 }
 
 public sealed record UpdateNotificationTemplateRequest(
-    string Channels,
+    bool EmailEnabled,
+    bool PushEnabled,
+    bool InAppEnabled,
     string? EmailSubject,
     string? EmailBodyHtml,
     string? InAppText,

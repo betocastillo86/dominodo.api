@@ -5,7 +5,7 @@ namespace Dominodo.Admin.Application.Notifications;
 
 internal static class NotificationMappers
 {
-    public static UserNotificationDto ToDto(UserNotification n) => new(
+    public static InAppMessageDto ToDto(InAppMessage n) => new(
         n.Id, n.TenantId, n.RecipientUserId, n.Type.ToString(), n.Title, n.Body,
         n.TargetUrl, n.IsRead, n.ReadAtUtc, n.TriggeredByUserId, n.CreatedAtUtc);
 

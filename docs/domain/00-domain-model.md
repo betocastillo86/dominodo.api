@@ -94,7 +94,7 @@ Implementado y verificado en el host (`Users` + `Admin` + `Tenants`); el resto d
 | `RefreshToken`, `VerificationCode`, `DeviceRegistration` | `Apartment`, `ApartmentResident`, `TenantFeature` |
 | `Tenant` (es el registro de tenants) | `Request`, `Delivery`, `Visit` y sus hijos |
 | `SystemSetting` global, `NotificationTemplate` global | `Announcement` |
-| Mensajes materializados: `UserNotification`, `EmailMessage`, `PushMessage` (§4.2) | `SystemSetting` override, `NotificationTemplate` override |
+| Mensajes materializados: `InAppMessage`, `EmailMessage`, `PushMessage` (§4.2) | `SystemSetting` override, `NotificationTemplate` override |
 
 ---
 
@@ -508,7 +508,7 @@ Agrupa **notificaciones** y **configuración** (temas administrativos, mismo sch
 > **`Announcement` como `Type` de plantilla vive aquí, pero el agregado `Announcement` (el comunicado)
 > vive en `Operations` (§3.4).** Esta plantilla es la del *aviso de que hay un comunicado nuevo*; la
 > dispara el consumer de `AnnouncementPublishedIntegrationEvent`.
-| `Channels` | `flags` | `Email`, `Push`, `InApp` |
+| `EmailEnabled` / `PushEnabled` / `InAppEnabled` | `bool` | prender/apagar por canal (como `IsEmail`/`IsMobile`/`IsSystem` en pollaya) |
 | `EmailSubject` / `EmailBodyHtml` | `string?` | |
 | `InAppText` / `PushText` | `string?` | |
 | `IsActive` | `bool` | |
@@ -521,7 +521,7 @@ de ejecutar el notification service — artefactos de procesamiento (outbox) que
 envío. Llevan `TenantId` como **columna simple** (para elegir SMTP/remitente y reportería), pero **no**
 se scopean con `ForCurrentTenant`; se consultan por destinatario/estado.
 
-- **`UserNotification`** (in-app): `Id`, `TenantId`, `RecipientUserId`, `Type`, `Title`, `Body`,
+- **`InAppMessage`** (in-app): `Id`, `TenantId`, `RecipientUserId`, `Type`, `Title`, `Body`,
   `TargetUrl?`, `IsRead`, `ReadAtUtc?`, `TriggeredByUserId?`, `CreatedAtUtc`. Se lee por `RecipientUserId`.
 - **`EmailMessage`** (outbox): `Id`, `TenantId`, `To`, `ToName?`, `Subject`, `BodyHtml`,
   `Priority` (`byte`), `Status` (`Pending`/`Sent`/`Failed`), `Attempts`, `ScheduledAtUtc?`, `SentAtUtc?`.

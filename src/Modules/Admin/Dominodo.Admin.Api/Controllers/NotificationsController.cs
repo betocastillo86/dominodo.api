@@ -1,4 +1,4 @@
-using Dominodo.Admin.Application.Notifications.CreateUserNotification;
+using Dominodo.Admin.Application.Notifications.CreateInAppMessage;
 using Dominodo.Admin.Application.Notifications.GetMyNotifications;
 using Dominodo.Admin.Application.Notifications.ListNotifications;
 using Dominodo.Admin.Application.Notifications.MarkNotificationRead;
@@ -24,7 +24,7 @@ public sealed class NotificationsController(ISender sender) : ControllerBase
     [HttpGet("me")]
     [Authorize]
     [EndpointSummary("Lists the caller's own in-app notifications (newest first). Self-service — no notifications.* permission.")]
-    [ProducesResponseType(typeof(IReadOnlyList<UserNotificationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<InAppMessageDto>), StatusCodes.Status200OK)]
     public async Task<IResult> GetMine([FromQuery] bool unreadOnly = false, CancellationToken ct = default)
     {
         var result = await sender.Send(new GetMyNotificationsQuery(unreadOnly), ct);
@@ -45,7 +45,7 @@ public sealed class NotificationsController(ISender sender) : ControllerBase
     [HttpGet]
     [HasPermission(Permissions.NotificationsView)]
     [EndpointSummary("Admin: lists in-app notifications for the current tenant (requires X-Tenant).")]
-    [ProducesResponseType(typeof(IReadOnlyList<UserNotificationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<InAppMessageDto>), StatusCodes.Status200OK)]
     public async Task<IResult> List(CancellationToken ct)
     {
         var result = await sender.Send(new ListNotificationsQuery(), ct);
@@ -58,10 +58,10 @@ public sealed class NotificationsController(ISender sender) : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IResult> Create(CreateUserNotificationRequest request, CancellationToken ct)
+    public async Task<IResult> Create(CreateInAppMessageRequest request, CancellationToken ct)
     {
         var result = await sender.Send(
-            new CreateUserNotificationCommand(
+            new CreateInAppMessageCommand(
                 request.RecipientUserId,
                 request.Type,
                 request.Title,
@@ -75,7 +75,7 @@ public sealed class NotificationsController(ISender sender) : ControllerBase
     }
 }
 
-public sealed record CreateUserNotificationRequest(
+public sealed record CreateInAppMessageRequest(
     Guid RecipientUserId,
     string Type,
     string Title,

@@ -4,19 +4,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Dominodo.Admin.Persistence.Repositories;
 
-internal sealed class UserNotificationRepository(AdminDbContext db) : IUserNotificationRepository
+internal sealed class InAppMessageRepository(AdminDbContext db) : IInAppMessageRepository
 {
-    public void Add(UserNotification notification) => db.UserNotifications.Add(notification);
+    public void Add(InAppMessage notification) => db.InAppMessages.Add(notification);
 
-    public Task<UserNotification?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
-        db.UserNotifications.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
+    public Task<InAppMessage?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        db.InAppMessages.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
 
-    public async Task<IReadOnlyList<UserNotification>> GetForRecipientAsync(
+    public async Task<IReadOnlyList<InAppMessage>> GetForRecipientAsync(
         Guid recipientUserId,
         bool unreadOnly,
         CancellationToken cancellationToken = default)
     {
-        var query = db.UserNotifications
+        var query = db.InAppMessages
             .AsNoTracking()
             .Where(n => n.RecipientUserId == recipientUserId);
 
@@ -28,10 +28,10 @@ internal sealed class UserNotificationRepository(AdminDbContext db) : IUserNotif
         return await query.OrderByDescending(n => n.CreatedAtUtc).ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<UserNotification>> GetForTenantAsync(
+    public async Task<IReadOnlyList<InAppMessage>> GetForTenantAsync(
         Guid tenantId,
         CancellationToken cancellationToken = default) =>
-        await db.UserNotifications
+        await db.InAppMessages
             .AsNoTracking()
             .Where(n => n.TenantId == tenantId)
             .OrderByDescending(n => n.CreatedAtUtc)

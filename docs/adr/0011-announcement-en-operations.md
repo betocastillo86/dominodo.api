@@ -13,7 +13,7 @@ distintas:
   audiencia (`AllTenant`/`ByTower`/`ByApartments`), vigencia (`ExpiresAtUtc`), prioridad de despliegue y
   adjuntos. Es contenido que la administración **carga y gestiona** y que los residentes **consumen**.
 - **Infraestructura de notificaciones:** `NotificationTemplate`, mensajes materializados
-  (`UserNotification`/`EmailMessage`/`PushMessage`), `DeviceRegistration` y la elección de canal/SMTP.
+  (`InAppMessage`/`EmailMessage`/`PushMessage`), `DeviceRegistration` y la elección de canal/SMTP.
   Es *cañería de entrega*.
 
 *Cargar noticias* es una capacidad operativa del día a día del conjunto (misma familia que

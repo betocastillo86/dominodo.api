@@ -1,4 +1,3 @@
-using Dominodo.Admin.Domain.Notifications;
 using Dominodo.Admin.Domain.Ports;
 using Dominodo.Shared.Kernel;
 using Dominodo.Shared.Kernel.Messaging;
@@ -8,7 +7,9 @@ namespace Dominodo.Admin.Application.Notifications.UpdateNotificationTemplate;
 
 internal sealed record UpdateNotificationTemplateCommand(
     Guid Id,
-    string Channels,
+    bool EmailEnabled,
+    bool PushEnabled,
+    bool InAppEnabled,
     string? EmailSubject,
     string? EmailBodyHtml,
     string? InAppText,
@@ -22,9 +23,26 @@ internal sealed class UpdateNotificationTemplateCommandValidator : AbstractValid
     {
         RuleFor(x => x.Id).NotEmpty();
 
-        RuleFor(x => x.Channels)
-            .Must(c => Enum.TryParse<NotificationChannel>(c, ignoreCase: false, out _))
-            .WithMessage("Channels must be a combination of 'Email', 'Push', 'InApp' (e.g. 'Email, InApp').");
+        // Enabling a channel requires its content to be present.
+        RuleFor(x => x.EmailSubject)
+            .NotEmpty()
+            .When(x => x.EmailEnabled)
+            .WithMessage("EmailSubject is required when EmailEnabled is true.");
+
+        RuleFor(x => x.EmailBodyHtml)
+            .NotEmpty()
+            .When(x => x.EmailEnabled)
+            .WithMessage("EmailBodyHtml is required when EmailEnabled is true.");
+
+        RuleFor(x => x.PushText)
+            .NotEmpty()
+            .When(x => x.PushEnabled)
+            .WithMessage("PushText is required when PushEnabled is true.");
+
+        RuleFor(x => x.InAppText)
+            .NotEmpty()
+            .When(x => x.InAppEnabled)
+            .WithMessage("InAppText is required when InAppEnabled is true.");
     }
 }
 
@@ -48,14 +66,14 @@ internal sealed class UpdateNotificationTemplateCommandHandler(
             return Error.NotFound("NotificationTemplate.NotFound", "No notification template found for this id in the current scope.");
         }
 
-        var channels = Enum.Parse<NotificationChannel>(command.Channels);
-
         template.UpdateContent(
-            channels,
+            command.EmailEnabled,
             command.EmailSubject,
             command.EmailBodyHtml,
-            command.InAppText,
+            command.PushEnabled,
             command.PushText,
+            command.InAppEnabled,
+            command.InAppText,
             command.IsActive,
             command.Localization);
 

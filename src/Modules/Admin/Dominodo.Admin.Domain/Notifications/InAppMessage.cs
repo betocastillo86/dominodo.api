@@ -4,11 +4,11 @@ namespace Dominodo.Admin.Domain.Notifications;
 
 // A materialized in-app notification (domain-model §4.2). NOT ITenantOwned: TenantId is a plain column
 // (used to pick sender/reporting), queried by RecipientUserId — never scoped via ForCurrentTenant.
-public sealed class UserNotification : AggregateRoot
+public sealed class InAppMessage : AggregateRoot
 {
-    private UserNotification() { } // EF Core
+    private InAppMessage() { } // EF Core
 
-    private UserNotification(
+    private InAppMessage(
         Guid id,
         Guid tenantId,
         Guid recipientUserId,
@@ -41,7 +41,7 @@ public sealed class UserNotification : AggregateRoot
     public Guid? TriggeredByUserId { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
-    public static Result<UserNotification> Create(
+    public static Result<InAppMessage> Create(
         Guid tenantId,
         Guid recipientUserId,
         NotificationType type,
@@ -53,20 +53,20 @@ public sealed class UserNotification : AggregateRoot
     {
         if (tenantId == Guid.Empty)
         {
-            return Error.Validation("UserNotification.TenantRequired", "A tenant is required.");
+            return Error.Validation("InAppMessage.TenantRequired", "A tenant is required.");
         }
 
         if (recipientUserId == Guid.Empty)
         {
-            return Error.Validation("UserNotification.RecipientRequired", "A recipient is required.");
+            return Error.Validation("InAppMessage.RecipientRequired", "A recipient is required.");
         }
 
         if (string.IsNullOrWhiteSpace(title))
         {
-            return Error.Validation("UserNotification.TitleRequired", "A title is required.");
+            return Error.Validation("InAppMessage.TitleRequired", "A title is required.");
         }
 
-        return new UserNotification(
+        return new InAppMessage(
             Guid.NewGuid(), tenantId, recipientUserId, type, title.Trim(), body ?? string.Empty,
             string.IsNullOrWhiteSpace(targetUrl) ? null : targetUrl.Trim(), triggeredByUserId, clock.UtcNow);
     }

@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Dominodo.Admin.Persistence.Configurations;
 
-internal sealed class UserNotificationConfiguration : IEntityTypeConfiguration<UserNotification>
+internal sealed class InAppMessageConfiguration : IEntityTypeConfiguration<InAppMessage>
 {
-    public void Configure(EntityTypeBuilder<UserNotification> builder)
+    public void Configure(EntityTypeBuilder<InAppMessage> builder)
     {
-        builder.ToTable("UserNotifications");
+        builder.ToTable("InAppMessages");
         builder.HasKey(n => n.Id);
 
         // TenantId is a plain column (NOT ITenantOwned) — queried by recipient (§4.2).

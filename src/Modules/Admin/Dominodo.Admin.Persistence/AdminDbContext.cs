@@ -14,7 +14,7 @@ internal sealed class AdminDbContext(DbContextOptions<AdminDbContext> options)
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
-    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<InAppMessage> InAppMessages => Set<InAppMessage>();
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
     public DbSet<PushMessage> PushMessages => Set<PushMessage>();
     public DbSet<DeviceRegistration> DeviceRegistrations => Set<DeviceRegistration>();

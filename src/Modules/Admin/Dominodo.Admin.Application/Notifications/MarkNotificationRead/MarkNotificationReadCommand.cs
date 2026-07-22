@@ -9,7 +9,7 @@ namespace Dominodo.Admin.Application.Notifications.MarkNotificationRead;
 internal sealed record MarkNotificationReadCommand(Guid Id) : ICommand;
 
 internal sealed class MarkNotificationReadCommandHandler(
-    IUserNotificationRepository notifications,
+    IInAppMessageRepository notifications,
     ICurrentUser currentUser,
     IClock clock)
     : ICommandHandler<MarkNotificationReadCommand>
@@ -19,7 +19,7 @@ internal sealed class MarkNotificationReadCommandHandler(
         var notification = await notifications.GetByIdAsync(command.Id, ct);
         if (notification is null || notification.RecipientUserId != currentUser.UserId)
         {
-            return Error.NotFound("UserNotification.NotFound", "No notification found for this id.");
+            return Error.NotFound("InAppMessage.NotFound", "No notification found for this id.");
         }
 
         notification.MarkRead(clock);

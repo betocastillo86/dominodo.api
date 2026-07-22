@@ -7,18 +7,18 @@ namespace Dominodo.Admin.Application.Notifications.ListNotifications;
 
 // Admin read (notifications.view): in-app notifications for the current tenant. Requires an X-Tenant —
 // these carry TenantId as a plain column and are listed by tenant, not via ForCurrentTenant (§4.2).
-internal sealed record ListNotificationsQuery : IQuery<IReadOnlyList<UserNotificationDto>>;
+internal sealed record ListNotificationsQuery : IQuery<IReadOnlyList<InAppMessageDto>>;
 
 internal sealed class ListNotificationsQueryHandler(
-    IUserNotificationRepository notifications,
+    IInAppMessageRepository notifications,
     ITenantContext tenant)
-    : IQueryHandler<ListNotificationsQuery, IReadOnlyList<UserNotificationDto>>
+    : IQueryHandler<ListNotificationsQuery, IReadOnlyList<InAppMessageDto>>
 {
-    public async Task<Result<IReadOnlyList<UserNotificationDto>>> Handle(ListNotificationsQuery query, CancellationToken ct)
+    public async Task<Result<IReadOnlyList<InAppMessageDto>>> Handle(ListNotificationsQuery query, CancellationToken ct)
     {
         if (!tenant.HasTenant)
         {
-            return Error.Validation("UserNotification.TenantRequired", "An X-Tenant header is required to list notifications.");
+            return Error.Validation("InAppMessage.TenantRequired", "An X-Tenant header is required to list notifications.");
         }
 
         var rows = await notifications.GetForTenantAsync(tenant.TenantId, ct);

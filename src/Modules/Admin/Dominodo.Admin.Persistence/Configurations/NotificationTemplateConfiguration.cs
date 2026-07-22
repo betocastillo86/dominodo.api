@@ -13,7 +13,9 @@ internal sealed class NotificationTemplateConfiguration : IEntityTypeConfigurati
 
         builder.Property(t => t.TenantId);
         builder.Property(t => t.Type).HasConversion<int>().IsRequired();
-        builder.Property(t => t.Channels).HasConversion<int>().IsRequired();
+        builder.Property(t => t.EmailEnabled).IsRequired();
+        builder.Property(t => t.PushEnabled).IsRequired();
+        builder.Property(t => t.InAppEnabled).IsRequired();
         builder.Property(t => t.EmailSubject).HasMaxLength(300);
         builder.Property(t => t.EmailBodyHtml).HasColumnType("nvarchar(max)");
         builder.Property(t => t.InAppText).HasColumnType("nvarchar(max)");
