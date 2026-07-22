@@ -114,6 +114,134 @@ public sealed class AdminRequestBuilder(IAdminClient admin, ISqlClient sql) : Ba
             IsActive: AsBool(row["IsActive"]));
     }
 
+    /// <summary>
+    /// Builds a valid <see cref="UpdateNotificationTemplateModel"/> (all channels enabled with content, so it
+    /// passes the validator by default). Any field is overridable for the 400 cases:
+    /// <c>model with { EmailSubject = null }</c>. Does NOT call the API.
+    /// </summary>
+    public UpdateNotificationTemplateModel BuildUpdateNotificationTemplateModel(
+        bool emailEnabled = true,
+        bool pushEnabled = true,
+        bool inAppEnabled = true,
+        string? emailSubject = null,
+        string? emailBodyHtml = null,
+        string? inAppText = null,
+        string? pushText = null,
+        bool isActive = true,
+        string? localization = null)
+    {
+        return new UpdateNotificationTemplateModel
+        {
+            EmailEnabled = emailEnabled,
+            PushEnabled = pushEnabled,
+            InAppEnabled = inAppEnabled,
+            EmailSubject = emailSubject ?? $"e2e-subject-{Guid.NewGuid():N}",
+            EmailBodyHtml = emailBodyHtml ?? "<p>e2e body</p>",
+            InAppText = inAppText ?? "e2e in-app text",
+            PushText = pushText ?? "e2e push text",
+            IsActive = isActive,
+            Localization = localization,
+        };
+    }
+
+    /// <summary>
+    /// Arrange: seeds a GLOBAL notification template (TenantId NULL) for the given <paramref name="type"/> via
+    /// the dev-only SQL endpoint — there is no create-by-API (§4.2), so this is the only way to arrange the
+    /// row. Idempotent across re-runs: the row for a scope is unique on (Type, TenantId), so any existing
+    /// global row of that type is deleted first. Reads the row back and returns it; throws on any non-success
+    /// step so a broken Arrange aborts the test immediately.
+    /// </summary>
+    public async Task<NotificationTemplateRow> SeedGlobalNotificationTemplateAsync(
+        int type,
+        bool emailEnabled = true,
+        bool pushEnabled = false,
+        bool inAppEnabled = true,
+        string? emailSubject = "e2e-subject",
+        string? emailBodyHtml = "<p>e2e body</p>",
+        string? inAppText = "e2e in-app text",
+        string? pushText = null,
+        bool isActive = true,
+        string? localization = null)
+    {
+        var id = Guid.NewGuid();
+        var statement =
+            $"DELETE FROM [admin].[NotificationTemplates] WHERE [Type] = {type} AND [TenantId] IS NULL; " +
+            "INSERT INTO [admin].[NotificationTemplates] " +
+            "([Id],[TenantId],[Type],[EmailEnabled],[PushEnabled],[InAppEnabled]," +
+            "[EmailSubject],[EmailBodyHtml],[InAppText],[PushText],[IsActive],[Localization]) VALUES (" +
+            $"'{id}', NULL, {type}, {Bit(emailEnabled)}, {Bit(pushEnabled)}, {Bit(inAppEnabled)}, " +
+            $"{SqlStr(emailSubject)}, {SqlStr(emailBodyHtml)}, {SqlStr(inAppText)}, {SqlStr(pushText)}, " +
+            $"{Bit(isActive)}, {SqlStr(localization)})";
+
+        var response = await _sql.Execute(new SqlRequestModel(statement));
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: seeding a notification template returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+
+        var row = await FindNotificationTemplateByIdAsync(id);
+        if (row is null)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: seeded notification template {id} was not found in admin.NotificationTemplates.");
+        }
+
+        return row;
+    }
+
+    /// <summary>
+    /// Reads a notification-template row back from <c>admin.NotificationTemplates</c> by id via the dev-only
+    /// SQL endpoint, or <c>null</c> if absent — used to assert the update's side effect. Throws on a non-success query.
+    /// </summary>
+    public async Task<NotificationTemplateRow?> FindNotificationTemplateByIdAsync(Guid id)
+    {
+        var query =
+            "SELECT [Id],[TenantId],[Type],[EmailEnabled],[PushEnabled],[InAppEnabled]," +
+            "[EmailSubject],[EmailBodyHtml],[InAppText],[PushText],[IsActive],[Localization] " +
+            $"FROM [admin].[NotificationTemplates] WHERE [Id] = '{id}'";
+
+        var response = await _sql.Query(new SqlRequestModel(query));
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Read-back failed: dev SQL query returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+
+        var row = response.Content!.Result.FirstOrDefault();
+        if (row is null)
+        {
+            return null;
+        }
+
+        return new NotificationTemplateRow(
+            Id: Guid.Parse(AsString(row["Id"])!),
+            TenantId: AsString(row["TenantId"]) is { } t ? Guid.Parse(t) : null,
+            Type: AsInt(row["Type"]),
+            EmailEnabled: AsBool(row["EmailEnabled"]),
+            PushEnabled: AsBool(row["PushEnabled"]),
+            InAppEnabled: AsBool(row["InAppEnabled"]),
+            EmailSubject: AsString(row["EmailSubject"]),
+            EmailBodyHtml: AsString(row["EmailBodyHtml"]),
+            InAppText: AsString(row["InAppText"]),
+            PushText: AsString(row["PushText"]),
+            IsActive: AsBool(row["IsActive"]),
+            Localization: AsString(row["Localization"]));
+    }
+
+    // NULL for a null value, else a single-quoted literal with embedded quotes doubled.
+    private static string SqlStr(string? value)
+    {
+        return value is null ? "NULL" : $"'{value.Replace("'", "''")}'";
+    }
+
+    private static int Bit(bool value)
+    {
+        return value ? 1 : 0;
+    }
+
     // Dev SQL values deserialize as JsonElement (object). SQL Server bit → JSON true/false;
     // uniqueidentifier/nvarchar → JSON string.
     private static string? AsString(object? value)
@@ -139,7 +267,37 @@ public sealed class AdminRequestBuilder(IAdminClient admin, ISqlClient sql) : Ba
 
         return Convert.ToBoolean(value);
     }
+
+    private static int AsInt(object? value)
+    {
+        if (value is JsonElement element)
+        {
+            return element.ValueKind switch
+            {
+                JsonValueKind.Number => element.GetInt32(),
+                JsonValueKind.String => int.Parse(element.GetString()!),
+                _ => 0,
+            };
+        }
+
+        return Convert.ToInt32(value);
+    }
 }
 
 /// <summary>A persisted <c>admin.DeviceRegistrations</c> row, read back for side-effect assertions.</summary>
 public sealed record DeviceRow(Guid Id, Guid UserId, string Platform, bool IsActive);
+
+/// <summary>A persisted <c>admin.NotificationTemplates</c> row, read back for Arrange and side-effect assertions.</summary>
+public sealed record NotificationTemplateRow(
+    Guid Id,
+    Guid? TenantId,
+    int Type,
+    bool EmailEnabled,
+    bool PushEnabled,
+    bool InAppEnabled,
+    string? EmailSubject,
+    string? EmailBodyHtml,
+    string? InAppText,
+    string? PushText,
+    bool IsActive,
+    string? Localization);
