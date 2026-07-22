@@ -20,12 +20,26 @@ internal sealed class RoleRepository(UsersDbContext db) : IRoleRepository
 
     public async Task<(IReadOnlyList<Role> Items, long TotalCount)> ListAsync(
         PageRequest page,
+        string? name,
+        RoleScope? scope,
         CancellationToken cancellationToken = default)
     {
-        var query = db.Roles.Include(r => r.Permissions).OrderBy(r => r.Id);
+        var query = db.Roles.Include(r => r.Permissions).AsQueryable();
 
-        var total = await query.LongCountAsync(cancellationToken);
-        var items = await query
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            query = query.Where(r => EF.Functions.Like(r.Name, $"%{name}%"));
+        }
+
+        if (scope is not null)
+        {
+            query = query.Where(r => r.Scope == scope);
+        }
+
+        var ordered = query.OrderBy(r => r.Id);
+
+        var total = await ordered.LongCountAsync(cancellationToken);
+        var items = await ordered
             .Skip(page.Skip)
             .Take(page.Take)
             .AsNoTracking()

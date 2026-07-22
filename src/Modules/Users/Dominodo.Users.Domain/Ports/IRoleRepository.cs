@@ -9,6 +9,10 @@ public interface IRoleRepository
     Task<Role?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
     Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken = default);
     Task<bool> ExistsByNameAsync(string name, int excludeRoleId, CancellationToken cancellationToken = default);
-    Task<(IReadOnlyList<Role> Items, long TotalCount)> ListAsync(PageRequest page, CancellationToken cancellationToken = default);
+    Task<(IReadOnlyList<Role> Items, long TotalCount)> ListAsync(
+        PageRequest page,
+        string? name,
+        RoleScope? scope,
+        CancellationToken cancellationToken = default);
     Task<int> GetMaxIdAsync(CancellationToken cancellationToken = default);
 }

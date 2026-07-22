@@ -23,9 +23,14 @@ public sealed class RolesController(ISender sender) : ControllerBase
     [HttpGet]
     [EndpointSummary("Lists roles, paged.")]
     [ProducesResponseType(typeof(PagedResult<RoleDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    public async Task<IResult> List(
+        [FromQuery] string? name = null,
+        [FromQuery] RoleScope? scope = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetRolesQuery(page, pageSize), ct);
+        var result = await sender.Send(new GetRolesQuery(name, scope, page, pageSize), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
 

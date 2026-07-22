@@ -6,7 +6,11 @@ using Dominodo.Users.Domain.Roles;
 
 namespace Dominodo.Users.Application.Roles.GetRoles;
 
-internal sealed record GetRolesQuery(int Page = 1, int PageSize = 20) : IQuery<PagedResult<RoleDto>>;
+internal sealed record GetRolesQuery(
+    string? Name = null,
+    RoleScope? Scope = null,
+    int Page = 1,
+    int PageSize = 20) : IQuery<PagedResult<RoleDto>>;
 
 internal sealed class GetRolesQueryHandler(IRoleRepository roles)
     : IQueryHandler<GetRolesQuery, PagedResult<RoleDto>>
@@ -14,7 +18,7 @@ internal sealed class GetRolesQueryHandler(IRoleRepository roles)
     public async Task<Result<PagedResult<RoleDto>>> Handle(GetRolesQuery query, CancellationToken ct)
     {
         var page = new PageRequest(query.Page, query.PageSize);
-        var (items, total) = await roles.ListAsync(page, ct);
+        var (items, total) = await roles.ListAsync(page, query.Name, query.Scope, ct);
 
         var dtos = items.Select(ToDto).ToList();
         return new PagedResult<RoleDto>(dtos, page.Skip / page.Take + 1, page.Take, total);
