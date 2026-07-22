@@ -9,17 +9,14 @@ namespace Dominodo.Admin.Application.Devices.RegisterDevice;
 
 // Self-service (domain-model §4.3 / doc 12 ownership): registers a push device for the CURRENT user.
 // Idempotent by (UserId, Token) — re-registering the same token reactivates/refreshes it.
-internal sealed record RegisterDeviceCommand(string Platform, string Token) : ICommand<Guid>;
+internal sealed record RegisterDeviceCommand(DevicePlatform Platform, string Token) : ICommand<Guid>;
 
 internal sealed class RegisterDeviceCommandValidator : AbstractValidator<RegisterDeviceCommand>
 {
     public RegisterDeviceCommandValidator()
     {
         RuleFor(x => x.Token).NotEmpty().MaximumLength(512);
-
-        RuleFor(x => x.Platform)
-            .Must(p => Enum.TryParse<DevicePlatform>(p, ignoreCase: false, out _))
-            .WithMessage("Platform must be 'Android' or 'iOS'.");
+        RuleFor(x => x.Platform).IsInEnum();
     }
 }
 
@@ -31,17 +28,16 @@ internal sealed class RegisterDeviceCommandHandler(
 {
     public async Task<Result<Guid>> Handle(RegisterDeviceCommand command, CancellationToken ct)
     {
-        var platform = Enum.Parse<DevicePlatform>(command.Platform);
         var token = command.Token.Trim();
 
         var existing = await devices.GetByUserAndTokenAsync(currentUser.UserId, token, ct);
         if (existing is not null)
         {
-            existing.Reactivate(platform, clock);
+            existing.Reactivate(command.Platform, clock);
             return existing.Id;
         }
 
-        var result = DeviceRegistration.Register(currentUser.UserId, platform, token, clock);
+        var result = DeviceRegistration.Register(currentUser.UserId, command.Platform, token, clock);
         if (result.IsFailure)
         {
             return result.Error;

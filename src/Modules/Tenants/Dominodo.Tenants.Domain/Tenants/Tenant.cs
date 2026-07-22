@@ -127,7 +127,7 @@ public sealed partial class Tenant : AggregateRoot
         }
 
         Status = TenantStatus.Active;
-        Raise(new TenantStatusChangedDomainEvent(Id, Slug, Status.ToString()));
+        Raise(new TenantStatusChangedDomainEvent(Id, Slug, Status));
         return Result.Success();
     }
 
@@ -139,7 +139,7 @@ public sealed partial class Tenant : AggregateRoot
         }
 
         Status = TenantStatus.Suspended;
-        Raise(new TenantStatusChangedDomainEvent(Id, Slug, Status.ToString()));
+        Raise(new TenantStatusChangedDomainEvent(Id, Slug, Status));
         return Result.Success();
     }
 
@@ -151,7 +151,7 @@ public sealed partial class Tenant : AggregateRoot
         }
 
         Status = TenantStatus.Onboarding;
-        Raise(new TenantStatusChangedDomainEvent(Id, Slug, Status.ToString()));
+        Raise(new TenantStatusChangedDomainEvent(Id, Slug, Status));
         return Result.Success();
     }
 

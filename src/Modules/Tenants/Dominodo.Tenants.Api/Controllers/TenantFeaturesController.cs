@@ -4,6 +4,7 @@ using Dominodo.Shared.Kernel.Authorization;
 using Dominodo.Tenants.Application.Tenants.Features.GetTenantFeatures;
 using Dominodo.Tenants.Application.Tenants.Features.SetTenantFeature;
 using Dominodo.Tenants.Contracts;
+using Dominodo.Tenants.Domain.Tenants;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -36,7 +37,7 @@ public sealed class TenantFeaturesController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IResult> Set(Guid tenantId, string featureKey, SetTenantFeatureRequest request, CancellationToken ct)
+    public async Task<IResult> Set(Guid tenantId, FeatureKey featureKey, SetTenantFeatureRequest request, CancellationToken ct)
     {
         var result = await sender.Send(new SetTenantFeatureCommand(tenantId, featureKey, request.Enabled), ct);
         return result.IsSuccess ? Results.NoContent() : result.ToProblem();

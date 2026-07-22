@@ -6,15 +6,13 @@ using FluentValidation;
 
 namespace Dominodo.Tenants.Application.Tenants.Features.SetTenantFeature;
 
-internal sealed record SetTenantFeatureCommand(Guid TenantId, string FeatureKey, bool Enabled) : ICommand;
+internal sealed record SetTenantFeatureCommand(Guid TenantId, FeatureKey FeatureKey, bool Enabled) : ICommand;
 
 internal sealed class SetTenantFeatureCommandValidator : AbstractValidator<SetTenantFeatureCommand>
 {
     public SetTenantFeatureCommandValidator()
     {
-        RuleFor(x => x.FeatureKey)
-            .Must(key => Enum.TryParse<FeatureKey>(key, ignoreCase: false, out _))
-            .WithMessage("FeatureKey must be one of 'Requests', 'Deliveries', 'Visits', 'Announcements' or 'WhatsApp'.");
+        RuleFor(x => x.FeatureKey).IsInEnum();
     }
 }
 
@@ -30,8 +28,7 @@ internal sealed class SetTenantFeatureCommandHandler(ITenantRepository tenants)
             return Error.NotFound("Tenant.NotFound", "Tenant not found.");
         }
 
-        var key = Enum.Parse<FeatureKey>(command.FeatureKey);
-        tenant.SetFeature(key, command.Enabled);
+        tenant.SetFeature(command.FeatureKey, command.Enabled);
 
         // No SaveChangesAsync — the UnitOfWorkBehavior owns the transaction (doc 03).
         return Result.Success();

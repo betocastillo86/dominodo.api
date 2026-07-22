@@ -8,6 +8,7 @@ using Dominodo.Tenants.Application.Tenants.GetTenantById;
 using Dominodo.Tenants.Application.Tenants.GetTenants;
 using Dominodo.Tenants.Application.Tenants.UpdateTenant;
 using Dominodo.Tenants.Contracts;
+using Dominodo.Tenants.Domain.Tenants;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -110,7 +111,7 @@ public sealed class TenantsController(ISender sender) : ControllerBase
 public sealed record CreateTenantRequest(
     string Slug,
     string Name,
-    string Type,
+    TenantType Type,
     string Address,
     string City,
     string Country,
@@ -125,4 +126,4 @@ public sealed record UpdateTenantRequest(
     string City,
     string Country);
 
-public sealed record ChangeTenantStatusRequest(string Status);
+public sealed record ChangeTenantStatusRequest(TenantStatus Status);

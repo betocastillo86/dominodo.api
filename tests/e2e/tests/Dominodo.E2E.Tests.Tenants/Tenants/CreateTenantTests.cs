@@ -45,13 +45,13 @@ public sealed class CreateTenantTests : BaseTenantsTests
     [Test]
     public async Task _400_WhenAllValidationRulesViolated()
     {
-        // Arrange — break every CreateTenantCommandValidator rule at once:
-        // Slug Matches("^[a-z0-9-]+$"), Name NotEmpty, Type enum-parse, and the profile MaximumLength rules.
+        // Arrange — break every FluentValidation rule evaluated once the body binds:
+        // Slug Matches("^[a-z0-9-]+$"), Name NotEmpty, and the profile MaximumLength rules. (Type is an enum
+        // rejected at JSON binding before the validator runs — covered separately below.)
         var model = TenantsRequestBuilder.BuildNewTenantModel() with
         {
             Slug = "Invalid Slug!",
             Name = "",
-            Type = "NotAType",
             LegalId = new string('x', 51),
             Address = new string('x', 301),
             City = new string('x', 101),
@@ -66,11 +66,26 @@ public sealed class CreateTenantTests : BaseTenantsTests
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         response.ShouldHaveValidationError(nameof(NewTenantModel.Slug))
                 .ShouldHaveValidationError(nameof(NewTenantModel.Name))
-                .ShouldHaveValidationError(nameof(NewTenantModel.Type))
                 .ShouldHaveValidationError(nameof(NewTenantModel.LegalId))
                 .ShouldHaveValidationError(nameof(NewTenantModel.Address))
                 .ShouldHaveValidationError(nameof(NewTenantModel.City))
                 .ShouldHaveValidationError(nameof(NewTenantModel.Country));
+    }
+
+    [Test]
+    public async Task _400_WhenTypeIsNotAValidEnum()
+    {
+        // Arrange — an unknown enum name fails at JSON binding (JsonStringEnumConverter); the
+        // InvalidModelStateResponseFactory maps it to the same Validation.Failed shape as a validator error.
+        var model = TenantsRequestBuilder.BuildNewTenantModel() with { Type = "NotAType" };
+        var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.TenantsCreate);
+
+        // Act
+        var response = await TenantsClient.CreateTenant(model, token);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.ShouldHaveValidationError(nameof(NewTenantModel.Type));
     }
 
     [Test]

@@ -3,6 +3,7 @@ using Dominodo.Admin.Application.Configuration.GetSystemSettingByKey;
 using Dominodo.Admin.Application.Configuration.GetSystemSettings;
 using Dominodo.Admin.Application.Configuration.UpdateSystemSetting;
 using Dominodo.Admin.Contracts;
+using Dominodo.Admin.Domain.Configuration;
 using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Infrastructure.Http;
 using Dominodo.Shared.Kernel.Authorization;
@@ -78,6 +79,6 @@ public sealed class SystemSettingsController(ISender sender) : ControllerBase
     }
 }
 
-public sealed record CreateSystemSettingRequest(string Key, string Value, string ValueType);
+public sealed record CreateSystemSettingRequest(string Key, string Value, SystemSettingValueType ValueType);
 
-public sealed record UpdateSystemSettingRequest(string Value, string ValueType);
+public sealed record UpdateSystemSettingRequest(string Value, SystemSettingValueType ValueType);

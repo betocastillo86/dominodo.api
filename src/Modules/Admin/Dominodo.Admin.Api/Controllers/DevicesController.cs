@@ -1,5 +1,6 @@
 using Dominodo.Admin.Application.Devices.DeactivateDevice;
 using Dominodo.Admin.Application.Devices.RegisterDevice;
+using Dominodo.Admin.Domain.Notifications;
 using Dominodo.Shared.Infrastructure.Http;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -41,4 +42,4 @@ public sealed class DevicesController(ISender sender) : ControllerBase
     }
 }
 
-public sealed record RegisterDeviceRequest(string Platform, string Token);
+public sealed record RegisterDeviceRequest(DevicePlatform Platform, string Token);

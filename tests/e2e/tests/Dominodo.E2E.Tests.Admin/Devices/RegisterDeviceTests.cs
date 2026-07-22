@@ -35,12 +35,11 @@ public sealed class RegisterDeviceTests : BaseAdminTests
     [Test]
     public async Task _400_WhenPayloadInvalid()
     {
-        // Arrange — break every field the validator guards at once: Token is required (NotEmpty) and
-        // Platform must parse to the DevicePlatform enum ("Android"/"iOS").
+        // Arrange — break the FluentValidation rule evaluated once the body binds: Token is required
+        // (NotEmpty). (Platform is an enum rejected at JSON binding — covered separately below.)
         var model = AdminRequestBuilder.BuildNewDeviceModel() with
         {
             Token = "",
-            Platform = "NotAPlatform",
         };
         var token = JwtTokenFactory.GeneratePublicToken();
 
@@ -49,8 +48,23 @@ public sealed class RegisterDeviceTests : BaseAdminTests
 
         // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        response.ShouldHaveValidationError(nameof(NewDeviceModel.Token))
-                .ShouldHaveValidationError(nameof(NewDeviceModel.Platform));
+        response.ShouldHaveValidationError(nameof(NewDeviceModel.Token));
+    }
+
+    [Test]
+    public async Task _400_WhenPlatformIsNotAValidEnum()
+    {
+        // Arrange — an unknown enum name fails at JSON binding (JsonStringEnumConverter); the
+        // InvalidModelStateResponseFactory maps it to the same Validation.Failed shape as a validator error.
+        var model = AdminRequestBuilder.BuildNewDeviceModel(platform: "NotAPlatform");
+        var token = JwtTokenFactory.GeneratePublicToken();
+
+        // Act
+        var response = await AdminClient.RegisterDevice(model, token);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.ShouldHaveValidationError(nameof(NewDeviceModel.Platform));
     }
 
     [Test]

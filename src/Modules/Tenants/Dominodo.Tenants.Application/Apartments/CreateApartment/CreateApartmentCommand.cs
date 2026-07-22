@@ -8,7 +8,7 @@ namespace Dominodo.Tenants.Application.Apartments.CreateApartment;
 
 internal sealed record CreateApartmentCommand(
     string Number,
-    string Type,
+    ApartmentType Type,
     string? Tower,
     string? Attributes) : ICommand<Guid>;
 
@@ -18,10 +18,7 @@ internal sealed class CreateApartmentCommandValidator : AbstractValidator<Create
     {
         RuleFor(x => x.Number).NotEmpty().MaximumLength(50);
         RuleFor(x => x.Tower).MaximumLength(50);
-
-        RuleFor(x => x.Type)
-            .Must(type => Enum.TryParse<ApartmentType>(type, ignoreCase: false, out _))
-            .WithMessage("Type must be one of 'Apartment', 'House', 'Commercial', 'Parking' or 'Storage'.");
+        RuleFor(x => x.Type).IsInEnum();
     }
 }
 
@@ -34,7 +31,6 @@ internal sealed class CreateApartmentCommandHandler(
 {
     public async Task<Result<Guid>> Handle(CreateApartmentCommand command, CancellationToken ct)
     {
-        var type = Enum.Parse<ApartmentType>(command.Type);
         var tower = string.IsNullOrWhiteSpace(command.Tower) ? null : command.Tower.Trim();
         var number = command.Number.Trim();
 
@@ -45,7 +41,7 @@ internal sealed class CreateApartmentCommandHandler(
                 "An apartment with this tower and number already exists in this tenant.");
         }
 
-        var apartmentResult = Apartment.Create(tenant.TenantId, number, type, tower);
+        var apartmentResult = Apartment.Create(tenant.TenantId, number, command.Type, tower);
         if (apartmentResult.IsFailure)
         {
             return apartmentResult.Error;

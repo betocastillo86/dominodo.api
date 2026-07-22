@@ -5,6 +5,7 @@ using Dominodo.Admin.Persistence;
 using Dominodo.Api;
 using Dominodo.Shared.Application;
 using Dominodo.Shared.Infrastructure;
+using Dominodo.Shared.Infrastructure.Http;
 using Dominodo.Shared.Infrastructure.Swagger;
 using Dominodo.Tenants.Application;
 using Dominodo.Tenants.Persistence;
@@ -13,6 +14,7 @@ using Dominodo.Users.Persistence;
 using JasperFx.CodeGeneration.Model;
 using JasperFx.Resources;
 using Serilog;
+using System.Text.Json.Serialization;
 using Wolverine;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -96,10 +98,25 @@ builder.Host.UseResourceSetupOnStartup();
 
 builder.Services
     .AddControllers()
+    // Enums cross the wire by name, not by ordinal — bound from and serialized as their string names
+    // (e.g. "String", "Android"). Commands, requests and internal DTOs use the enum type directly; the
+    // converter owns the JSON representation. See docs/architecture/11-cross-cutting.md.
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
+    // Uniform 400: a bad enum value caught at the binding edge maps to the same "Validation.Failed"
+    // ProblemDetails the ValidationBehavior produces for FluentValidation failures (docs 04 / 08).
+    .ConfigureApiBehaviorOptions(options =>
+        options.InvalidModelStateResponseFactory = ValidationProblem.From)
     // Module controllers live in each module's *.Api assembly — register them as parts.
     .AddApplicationPart(typeof(Dominodo.Users.Api.IUsersApiMarker).Assembly)
     .AddApplicationPart(typeof(Dominodo.Tenants.Api.ITenantsApiMarker).Assembly)
     .AddApplicationPart(typeof(Dominodo.Admin.Api.IAdminApiMarker).Assembly);
+
+// Controller actions return IResult (Results.Ok/…), which serialize through the Http.Json options
+// rather than the MVC ones above — register the converter here too so enum-typed DTOs serialize as names.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
 builder.Services.AddDominodoSwagger();
 
 builder.Services.AddHealthChecks()

@@ -9,7 +9,7 @@ namespace Dominodo.Users.Application.Roles.CreateRole;
 internal sealed record CreateRoleCommand(
     string Name,
     string? Description,
-    string Scope,
+    RoleScope Scope,
     IReadOnlyList<int> PermissionIds) : ICommand<int>;
 
 internal sealed class CreateRoleCommandValidator : AbstractValidator<CreateRoleCommand>
@@ -18,10 +18,7 @@ internal sealed class CreateRoleCommandValidator : AbstractValidator<CreateRoleC
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Description).MaximumLength(300);
-
-        RuleFor(x => x.Scope)
-            .Must(scope => Enum.TryParse<RoleScope>(scope, ignoreCase: false, out _))
-            .WithMessage("Scope must be either 'Platform' or 'Tenant'.");
+        RuleFor(x => x.Scope).IsInEnum();
 
         RuleFor(x => x.PermissionIds)
             .NotEmpty()
@@ -36,8 +33,6 @@ internal sealed class CreateRoleCommandHandler(
 {
     public async Task<Result<int>> Handle(CreateRoleCommand command, CancellationToken ct)
     {
-        var scope = Enum.Parse<RoleScope>(command.Scope);
-
         if (await roles.ExistsByNameAsync(command.Name.Trim(), ct))
         {
             return Error.Conflict("Role.NameAlreadyExists", "A role with this name already exists.");
@@ -58,7 +53,7 @@ internal sealed class CreateRoleCommandHandler(
 
         var nextId = await roles.GetMaxIdAsync(ct) + 1;
 
-        var roleResult = Role.Create(nextId, command.Name, command.Description, scope);
+        var roleResult = Role.Create(nextId, command.Name, command.Description, command.Scope);
         if (roleResult.IsFailure)
         {
             return roleResult.Error;

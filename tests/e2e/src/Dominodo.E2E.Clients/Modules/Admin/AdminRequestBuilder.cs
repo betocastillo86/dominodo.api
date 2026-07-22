@@ -2,6 +2,8 @@ using System.Text.Json;
 using Dominodo.E2E.Clients.Common;
 using Dominodo.E2E.Clients.Dev;
 using Dominodo.E2E.Clients.Modules.Admin.Models;
+using Dominodo.E2E.Core;
+using Dominodo.E2E.Core.Security;
 
 namespace Dominodo.E2E.Clients.Modules.Admin;
 
@@ -14,10 +16,12 @@ namespace Dominodo.E2E.Clients.Modules.Admin;
 /// (<see cref="ISqlClient"/>) against <c>admin.DeviceRegistrations</c> — the only way to observe the
 /// persisted row without touching <c>src/</c>.
 /// </summary>
-public sealed class AdminRequestBuilder(IAdminClient admin, ISqlClient sql) : BaseRequestBuilder
+public sealed class AdminRequestBuilder(IAdminClient admin, ISqlClient sql, JwtTokenFactory jwtTokenFactory)
+    : BaseRequestBuilder
 {
     private readonly IAdminClient _admin = admin;
     private readonly ISqlClient _sql = sql;
+    private readonly JwtTokenFactory _jwtTokenFactory = jwtTokenFactory;
 
     /// <summary>
     /// Builds a valid <see cref="NewDeviceModel"/> (Platform "Android", a unique device token). Any field
@@ -229,6 +233,92 @@ public sealed class AdminRequestBuilder(IAdminClient admin, ISqlClient sql) : Ba
             PushText: AsString(row["PushText"]),
             IsActive: AsBool(row["IsActive"]),
             Localization: AsString(row["Localization"]));
+    }
+
+    /// <summary>
+    /// Builds a valid <see cref="NewSystemSettingModel"/> (unique key, a "String" value). Any field is
+    /// overridable for the 400 cases: <c>model with { ValueType = "NotAType" }</c>. Does NOT call the API.
+    /// </summary>
+    public NewSystemSettingModel BuildNewSystemSettingModel(
+        string? key = null,
+        string? value = null,
+        string? valueType = null)
+    {
+        return new NewSystemSettingModel
+        {
+            Key = key ?? $"e2e-setting-{Guid.NewGuid():N}",
+            Value = value ?? "e2e-value",
+            ValueType = valueType ?? "String",
+        };
+    }
+
+    /// <summary>
+    /// Builds a valid <see cref="UpdateSystemSettingModel"/> (a fresh "String" value). Any field is
+    /// overridable for the 400 cases. Does NOT call the API.
+    /// </summary>
+    public UpdateSystemSettingModel BuildUpdateSystemSettingModel(
+        string? value = null,
+        string? valueType = null)
+    {
+        return new UpdateSystemSettingModel
+        {
+            Value = value ?? "e2e-updated-value",
+            ValueType = valueType ?? "String",
+        };
+    }
+
+    /// <summary>
+    /// Full Arrange (parameter overload): builds a valid <see cref="NewSystemSettingModel"/> from the given
+    /// overrides and creates it. Convenience over <see cref="BuildNewSystemSettingModel"/> +
+    /// <see cref="CreateSystemSettingAsync(NewSystemSettingModel)"/>.
+    /// </summary>
+    public Task<SystemSettingModel> CreateSystemSettingAsync(
+        string? key = null,
+        string? value = null,
+        string? valueType = null)
+    {
+        return CreateSystemSettingAsync(BuildNewSystemSettingModel(key, value, valueType));
+    }
+
+    /// <summary>
+    /// Full Arrange: creates a GLOBAL setting (Platform scope, no X-Tenant) with the seeded
+    /// <c>settings.create</c> token, reads it back via <c>GET /system-settings/{key}</c> (with the
+    /// <c>settings.view</c> token), and returns the persisted <see cref="SystemSettingModel"/>. Throws on any
+    /// non-success step so a broken Arrange aborts the test.
+    /// </summary>
+    public async Task<SystemSettingModel> CreateSystemSettingAsync(NewSystemSettingModel model)
+    {
+        var createToken = _jwtTokenFactory.GenerateToken(DominodoConstants.Permission.SettingsCreate);
+
+        var response = await _admin.CreateSystemSetting(model, token: createToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Arrange failed: creating system setting '{model.Key}' returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+
+        return await GetSystemSettingAsync(model.Key!);
+    }
+
+    /// <summary>
+    /// Reads a setting back via <c>GET /system-settings/{key}</c> (with the seeded <c>settings.view</c> token,
+    /// Platform scope) and returns the persisted model — used to assert an endpoint's side effect. Throws on
+    /// non-success.
+    /// </summary>
+    public async Task<SystemSettingModel> GetSystemSettingAsync(string key)
+    {
+        var viewToken = _jwtTokenFactory.GenerateToken(DominodoConstants.Permission.SettingsView);
+
+        var response = await _admin.GetSystemSettingByKey(key, token: viewToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Read-back failed: GET system setting '{key}' returned {(int)response.StatusCode}. " +
+                $"Body: {response.Error?.Content}");
+        }
+
+        return response.Content!;
     }
 
     // NULL for a null value, else a single-quoted literal with embedded quotes doubled.

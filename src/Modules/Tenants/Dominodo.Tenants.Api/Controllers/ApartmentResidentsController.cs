@@ -6,6 +6,7 @@ using Dominodo.Tenants.Application.Apartments.Residents.EndResidency;
 using Dominodo.Tenants.Application.Apartments.Residents.GetApartmentResidents;
 using Dominodo.Tenants.Application.Apartments.Residents.RemoveResident;
 using Dominodo.Tenants.Contracts;
+using Dominodo.Tenants.Domain.Apartments;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -82,7 +83,7 @@ public sealed class ApartmentResidentsController(ISender sender) : ControllerBas
 
 public sealed record AssignResidentRequest(
     Guid UserId,
-    string RelationType,
+    ResidentRelationType RelationType,
     bool LivesHere,
     DateOnly? StartDate);
 

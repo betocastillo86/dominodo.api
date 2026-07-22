@@ -8,6 +8,7 @@ using Dominodo.Tenants.Application.Apartments.GetApartmentById;
 using Dominodo.Tenants.Application.Apartments.GetApartments;
 using Dominodo.Tenants.Application.Apartments.UpdateApartment;
 using Dominodo.Tenants.Contracts;
+using Dominodo.Tenants.Domain.Apartments;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -32,8 +33,8 @@ public sealed class ApartmentsController(ISender sender) : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] string? tower = null,
-        [FromQuery] string? type = null,
-        [FromQuery] string? status = null,
+        [FromQuery] ApartmentType? type = null,
+        [FromQuery] ApartmentStatus? status = null,
         CancellationToken ct = default)
     {
         var result = await sender.Send(new GetApartmentsQuery(page, pageSize, tower, type, status), ct);
@@ -112,14 +113,14 @@ public sealed class ApartmentsController(ISender sender) : ControllerBase
 
 public sealed record CreateApartmentRequest(
     string Number,
-    string Type,
+    ApartmentType Type,
     string? Tower,
     string? Attributes);
 
 public sealed record UpdateApartmentRequest(
     string Number,
-    string Type,
+    ApartmentType Type,
     string? Tower,
     string? Attributes);
 
-public sealed record ChangeApartmentStatusRequest(string Status);
+public sealed record ChangeApartmentStatusRequest(ApartmentStatus Status);

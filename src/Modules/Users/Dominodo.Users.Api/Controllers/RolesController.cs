@@ -7,6 +7,7 @@ using Dominodo.Users.Application.Roles.CreateRole;
 using Dominodo.Users.Application.Roles.GetRoleById;
 using Dominodo.Users.Application.Roles.GetRoles;
 using Dominodo.Users.Application.Roles.UpdateRole;
+using Dominodo.Users.Domain.Roles;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -82,7 +83,7 @@ public sealed class RolesController(ISender sender) : ControllerBase
 public sealed record CreateRoleRequest(
     string Name,
     string? Description,
-    string Scope,
+    RoleScope Scope,
     IReadOnlyList<int>? PermissionIds);
 
 public sealed record UpdateRoleRequest(

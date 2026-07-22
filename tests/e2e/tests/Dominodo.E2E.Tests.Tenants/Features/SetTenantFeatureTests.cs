@@ -44,8 +44,8 @@ public sealed class SetTenantFeatureTests : BaseTenantsTests
     [Test]
     public async Task _400_WhenFeatureKeyIsNotAValidEnum()
     {
-        // Arrange — the only SetTenantFeatureCommandValidator rule: FeatureKey must parse to FeatureKey.
-        // The key travels in the route; an unknown one still binds and reaches the validator.
+        // Arrange — FeatureKey is the FeatureKey enum, bound from the route; an unknown name fails route
+        // model binding and is mapped to the same Validation.Failed shape as a validator error.
         var model = TenantsRequestBuilder.BuildSetTenantFeatureModel(enabled: true);
         var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.TenantsEdit);
 

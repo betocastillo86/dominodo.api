@@ -6,15 +6,13 @@ using FluentValidation;
 
 namespace Dominodo.Tenants.Application.Tenants.ChangeTenantStatus;
 
-internal sealed record ChangeTenantStatusCommand(Guid TenantId, string Status) : ICommand;
+internal sealed record ChangeTenantStatusCommand(Guid TenantId, TenantStatus Status) : ICommand;
 
 internal sealed class ChangeTenantStatusCommandValidator : AbstractValidator<ChangeTenantStatusCommand>
 {
     public ChangeTenantStatusCommandValidator()
     {
-        RuleFor(x => x.Status)
-            .Must(status => Enum.TryParse<TenantStatus>(status, ignoreCase: false, out _))
-            .WithMessage("Status must be one of 'Onboarding', 'Active' or 'Suspended'.");
+        RuleFor(x => x.Status).IsInEnum();
     }
 }
 
@@ -29,9 +27,7 @@ internal sealed class ChangeTenantStatusCommandHandler(ITenantRepository tenants
             return Error.NotFound("Tenant.NotFound", "Tenant not found.");
         }
 
-        var status = Enum.Parse<TenantStatus>(command.Status);
-
-        return status switch
+        return command.Status switch
         {
             TenantStatus.Active => tenant.Activate(),
             TenantStatus.Suspended => tenant.Suspend(),

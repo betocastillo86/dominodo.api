@@ -44,13 +44,13 @@ public sealed class CreateRoleTests : BaseUsersTests
     [Test]
     public async Task _400_WhenAllRulesViolated()
     {
-        // Arrange — break every CreateRoleCommandValidator rule at once:
-        // Name NotEmpty, Description MaximumLength(300), Scope must parse to RoleScope, PermissionIds NotNull.
+        // Arrange — break every FluentValidation rule evaluated once the body binds:
+        // Name NotEmpty, Description MaximumLength(300), PermissionIds NotNull. (Scope is an enum rejected at
+        // JSON binding before the validator runs — covered separately below.)
         var model = UsersRequestBuilder.BuildNewRoleModel() with
         {
             Name = "",
             Description = new string('x', 301),
-            Scope = "NotAScope",
             PermissionIds = null,
         };
         var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.RolesManage);
@@ -62,8 +62,23 @@ public sealed class CreateRoleTests : BaseUsersTests
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         response.ShouldHaveValidationError(nameof(NewRoleModel.Name))
                 .ShouldHaveValidationError(nameof(NewRoleModel.Description))
-                .ShouldHaveValidationError(nameof(NewRoleModel.Scope))
                 .ShouldHaveValidationError(nameof(NewRoleModel.PermissionIds));
+    }
+
+    [Test]
+    public async Task _400_WhenScopeIsNotAValidEnum()
+    {
+        // Arrange — an unknown enum name fails at JSON binding (JsonStringEnumConverter); the
+        // InvalidModelStateResponseFactory maps it to the same Validation.Failed shape as a validator error.
+        var model = UsersRequestBuilder.BuildNewRoleModel() with { Scope = "NotAScope" };
+        var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.RolesManage);
+
+        // Act
+        var response = await UsersClient.CreateRole(model, token);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.ShouldHaveValidationError(nameof(NewRoleModel.Scope));
     }
 
     [Test]

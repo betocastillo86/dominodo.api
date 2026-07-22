@@ -103,12 +103,11 @@ public sealed class AssignResidentTests : BaseTenantsTests
     [Test]
     public async Task _400_WhenAllValidationRulesViolated()
     {
-        // Arrange — break every AssignResidentCommandValidator rule at once: UserId NotEmpty, RelationType
-        // enum-parse ("Owner"/"Renter").
+        // Arrange — break the FluentValidation rule evaluated once the body binds: UserId NotEmpty.
+        // (RelationType is an enum rejected at JSON binding — covered separately below.)
         var model = TenantsRequestBuilder.BuildAssignResidentModel() with
         {
             UserId = Guid.Empty,
-            RelationType = "NotARelation",
         };
         var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.ApartmentsEdit);
 
@@ -117,8 +116,23 @@ public sealed class AssignResidentTests : BaseTenantsTests
 
         // Assert — one validation failure carrying an error per broken field.
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        response.ShouldHaveValidationError(nameof(AssignResidentModel.UserId))
-                .ShouldHaveValidationError(nameof(AssignResidentModel.RelationType));
+        response.ShouldHaveValidationError(nameof(AssignResidentModel.UserId));
+    }
+
+    [Test]
+    public async Task _400_WhenRelationTypeIsNotAValidEnum()
+    {
+        // Arrange — an unknown enum name fails at JSON binding (JsonStringEnumConverter); the
+        // InvalidModelStateResponseFactory maps it to the same Validation.Failed shape as a validator error.
+        var model = TenantsRequestBuilder.BuildAssignResidentModel() with { RelationType = "NotARelation" };
+        var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.ApartmentsEdit);
+
+        // Act
+        var response = await TenantsClient.AssignResident(Guid.NewGuid(), model, tenant: SeededTenantSlug, token: token);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.ShouldHaveValidationError(nameof(AssignResidentModel.RelationType));
     }
 
     [Test]

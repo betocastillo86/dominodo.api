@@ -9,7 +9,7 @@ namespace Dominodo.Tenants.Application.Apartments.UpdateApartment;
 internal sealed record UpdateApartmentCommand(
     Guid ApartmentId,
     string Number,
-    string Type,
+    ApartmentType Type,
     string? Tower,
     string? Attributes) : ICommand;
 
@@ -19,10 +19,7 @@ internal sealed class UpdateApartmentCommandValidator : AbstractValidator<Update
     {
         RuleFor(x => x.Number).NotEmpty().MaximumLength(50);
         RuleFor(x => x.Tower).MaximumLength(50);
-
-        RuleFor(x => x.Type)
-            .Must(type => Enum.TryParse<ApartmentType>(type, ignoreCase: false, out _))
-            .WithMessage("Type must be one of 'Apartment', 'House', 'Commercial', 'Parking' or 'Storage'.");
+        RuleFor(x => x.Type).IsInEnum();
     }
 }
 
@@ -38,7 +35,6 @@ internal sealed class UpdateApartmentCommandHandler(IApartmentRepository apartme
             return Error.NotFound("Apartment.NotFound", "Apartment not found.");
         }
 
-        var type = Enum.Parse<ApartmentType>(command.Type);
         var tower = string.IsNullOrWhiteSpace(command.Tower) ? null : command.Tower.Trim();
         var number = command.Number.Trim();
 
@@ -58,7 +54,7 @@ internal sealed class UpdateApartmentCommandHandler(IApartmentRepository apartme
             return renameResult.Error;
         }
 
-        var typeResult = apartment.ChangeType(type);
+        var typeResult = apartment.ChangeType(command.Type);
         if (typeResult.IsFailure)
         {
             return typeResult.Error;

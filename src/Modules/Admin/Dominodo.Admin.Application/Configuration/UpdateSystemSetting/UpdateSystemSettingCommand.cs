@@ -9,18 +9,15 @@ namespace Dominodo.Admin.Application.Configuration.UpdateSystemSetting;
 internal sealed record UpdateSystemSettingCommand(
     string Key,
     string Value,
-    string ValueType) : ICommand;
+    SystemSettingValueType ValueType) : ICommand;
 
 internal sealed class UpdateSystemSettingCommandValidator : AbstractValidator<UpdateSystemSettingCommand>
 {
     public UpdateSystemSettingCommandValidator()
     {
-        RuleFor(x => x.Key).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Key).NotNull().NotEmpty().MaximumLength(200);
         RuleFor(x => x.Value).NotNull();
-
-        RuleFor(x => x.ValueType)
-            .Must(vt => Enum.TryParse<SystemSettingValueType>(vt, ignoreCase: false, out _))
-            .WithMessage("ValueType must be one of 'String', 'Int', 'Bool' or 'Json'.");
+        RuleFor(x => x.ValueType).IsInEnum();
     }
 }
 
@@ -43,9 +40,7 @@ internal sealed class UpdateSystemSettingCommandHandler(
             return Error.NotFound("SystemSetting.NotFound", $"No setting found for key '{key}' in this scope.");
         }
 
-        var valueType = Enum.Parse<SystemSettingValueType>(command.ValueType);
-
-        var result = setting.UpdateValue(command.Value, valueType, clock);
+        var result = setting.UpdateValue(command.Value, command.ValueType, clock);
         // No SaveChangesAsync — the UnitOfWorkBehavior owns the transaction (doc 03).
         return result;
     }

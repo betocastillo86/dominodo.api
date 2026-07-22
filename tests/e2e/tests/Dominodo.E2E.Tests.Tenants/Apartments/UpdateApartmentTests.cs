@@ -102,12 +102,11 @@ public sealed class UpdateApartmentTests : BaseTenantsTests
     [Test]
     public async Task _400_WhenAllValidationRulesViolated()
     {
-        // Arrange — break every UpdateApartmentCommandValidator rule at once: Number NotEmpty, Type enum-parse,
-        // Tower MaximumLength(50).
+        // Arrange — break the FluentValidation rules evaluated once the body binds: Number NotEmpty,
+        // Tower MaximumLength(50). (Type is an enum rejected at JSON binding — covered separately below.)
         var model = TenantsRequestBuilder.BuildUpdateApartmentModel() with
         {
             Number = "",
-            Type = "NotAType",
             Tower = new string('x', 51),
         };
         var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.ApartmentsEdit);
@@ -118,8 +117,23 @@ public sealed class UpdateApartmentTests : BaseTenantsTests
         // Assert — one validation failure carrying an error per broken field.
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         response.ShouldHaveValidationError(nameof(UpdateApartmentModel.Number))
-                .ShouldHaveValidationError(nameof(UpdateApartmentModel.Type))
                 .ShouldHaveValidationError(nameof(UpdateApartmentModel.Tower));
+    }
+
+    [Test]
+    public async Task _400_WhenTypeIsNotAValidEnum()
+    {
+        // Arrange — an unknown enum name fails at JSON binding (JsonStringEnumConverter); the
+        // InvalidModelStateResponseFactory maps it to the same Validation.Failed shape as a validator error.
+        var model = TenantsRequestBuilder.BuildUpdateApartmentModel() with { Type = "NotAType" };
+        var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.ApartmentsEdit);
+
+        // Act
+        var response = await TenantsClient.UpdateApartment(Guid.NewGuid(), model, tenant: SeededTenantSlug, token: token);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.ShouldHaveValidationError(nameof(UpdateApartmentModel.Type));
     }
 
     [Test]

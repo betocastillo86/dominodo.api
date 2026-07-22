@@ -11,20 +11,16 @@ internal sealed record GetApartmentsQuery(
     int Page = 1,
     int PageSize = 20,
     string? Tower = null,
-    string? Type = null,
-    string? Status = null) : IQuery<PagedResult<ApartmentDto>>;
+    ApartmentType? Type = null,
+    ApartmentStatus? Status = null) : IQuery<PagedResult<ApartmentDto>>;
 
 internal sealed class GetApartmentsQueryHandler(IApartmentRepository apartments)
     : IQueryHandler<GetApartmentsQuery, PagedResult<ApartmentDto>>
 {
     public async Task<Result<PagedResult<ApartmentDto>>> Handle(GetApartmentsQuery query, CancellationToken ct)
     {
-        // Optional filters are validated at the boundary; parse leniently to null when absent/blank.
-        ApartmentType? type = Enum.TryParse<ApartmentType>(query.Type, out var t) ? t : null;
-        ApartmentStatus? status = Enum.TryParse<ApartmentStatus>(query.Status, out var s) ? s : null;
-
         var page = new PageRequest(query.Page, query.PageSize);
-        var (items, total) = await apartments.ListAsync(page, query.Tower, type, status, ct);
+        var (items, total) = await apartments.ListAsync(page, query.Tower, query.Type, query.Status, ct);
 
         var dtos = items.Select(ToDto).ToList();
         return new PagedResult<ApartmentDto>(dtos, page.Skip / page.Take + 1, page.Take, total);

@@ -9,7 +9,7 @@ namespace Dominodo.Tenants.Application.Tenants.CreateTenant;
 internal sealed record CreateTenantCommand(
     string Slug,
     string Name,
-    string Type,
+    TenantType Type,
     string Address,
     string City,
     string Country,
@@ -33,9 +33,7 @@ internal sealed class CreateTenantCommandValidator : AbstractValidator<CreateTen
         RuleFor(x => x.City).MaximumLength(100);
         RuleFor(x => x.Country).MaximumLength(100);
 
-        RuleFor(x => x.Type)
-            .Must(type => Enum.TryParse<TenantType>(type, ignoreCase: false, out _))
-            .WithMessage("Type must be one of 'Conjunto', 'Edificio' or 'Mixto'.");
+        RuleFor(x => x.Type).IsInEnum();
     }
 }
 
@@ -44,8 +42,6 @@ internal sealed class CreateTenantCommandHandler(ITenantRepository tenants)
 {
     public async Task<Result<Guid>> Handle(CreateTenantCommand command, CancellationToken ct)
     {
-        var type = Enum.Parse<TenantType>(command.Type);
-
         if (await tenants.ExistsBySlugAsync(command.Slug, ct))
         {
             return Error.Conflict("Tenant.SlugAlreadyExists", "A tenant with this slug already exists.");
@@ -54,7 +50,7 @@ internal sealed class CreateTenantCommandHandler(ITenantRepository tenants)
         var tenantResult = Tenant.Create(
             command.Slug,
             command.Name,
-            type,
+            command.Type,
             command.Address,
             command.City,
             command.Country,

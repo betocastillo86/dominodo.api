@@ -1,3 +1,5 @@
+using Dominodo.Users.Domain.Roles;
+
 namespace Dominodo.Users.Application.Roles.GetRoleById;
 
 internal sealed record RolePermissionSummaryDto(int Id, string Code);
@@ -7,5 +9,5 @@ internal sealed record RoleDetailDto(
     string Name,
     string? Description,
     bool IsSystem,
-    string Scope,
+    RoleScope Scope,
     IReadOnlyList<RolePermissionSummaryDto> Permissions);

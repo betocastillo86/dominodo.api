@@ -11,7 +11,7 @@ namespace Dominodo.Admin.Application.Notifications.CreateInAppMessage;
 // the acting admin.
 internal sealed record CreateInAppMessageCommand(
     Guid RecipientUserId,
-    string Type,
+    NotificationType Type,
     string Title,
     string Body,
     string? TargetUrl) : ICommand<Guid>;
@@ -22,10 +22,7 @@ internal sealed class CreateInAppMessageCommandValidator : AbstractValidator<Cre
     {
         RuleFor(x => x.RecipientUserId).NotEmpty();
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
-
-        RuleFor(x => x.Type)
-            .Must(t => Enum.TryParse<NotificationType>(t, ignoreCase: false, out _))
-            .WithMessage("Type must be a valid notification type.");
+        RuleFor(x => x.Type).IsInEnum();
     }
 }
 
@@ -44,12 +41,10 @@ internal sealed class CreateInAppMessageCommandHandler(
                 Error.Validation("InAppMessage.TenantRequired", "An X-Tenant header is required to create a notification."));
         }
 
-        var type = Enum.Parse<NotificationType>(command.Type);
-
         var result = InAppMessage.Create(
             tenant.TenantId,
             command.RecipientUserId,
-            type,
+            command.Type,
             command.Title,
             command.Body,
             command.TargetUrl,

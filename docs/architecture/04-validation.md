@@ -41,6 +41,20 @@ internal sealed class OpenPqrCommandValidator : AbstractValidator<OpenPqrCommand
 }
 ```
 
+### Enum fields
+
+Enum inputs are typed as the **enum**, not a `string` (see
+[11 — Cross-Cutting](./11-cross-cutting.md#enums-on-the-wire)). The `JsonStringEnumConverter` already
+rejects an unknown enum *name* at the binding edge, but a valid underlying *integer* still binds — so
+guard the field with `IsInEnum()` to reject out-of-range values with a clean `400`:
+
+```csharp
+RuleFor(x => x.ValueType).IsInEnum();
+```
+
+Do **not** write `.Must(v => Enum.TryParse<T>(v, out _))` over a `string` field and re-parse it in the
+handler — the field should be the enum type to begin with.
+
 Validators are discovered per module and registered from the module assembly:
 
 ```csharp

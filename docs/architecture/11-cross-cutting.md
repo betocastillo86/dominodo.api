@@ -124,6 +124,14 @@ middleware behind `if (env.IsDevelopment() || env.IsEnvironment("IntegrationTest
   as `ProblemDetails`), and `[EndpointSummary("...")]` for the operation summary. There is **no** XML
   doc file: documentation is driven purely by attributes, so `GenerateDocumentationFile` stays off.
 
+## Enums on the wire
+
+Enums are modeled as **enums**, never as strings, everywhere the compiler lets us. Commands, queries,
+HTTP request records (in `*.Api`) and internal `*.Application` DTOs all use the enum type directly — no
+`string` field validated with `Enum.TryParse` and re-parsed with `Enum.Parse` in the handler. The JSON
+representation is owned by a single globally-registered `JsonStringEnumConverter`, so an enum crosses
+the wire by **name** (`"String"`, `"Android"`, `"Owner"`)
+
 ## Health checks
 
 The host exposes liveness and readiness endpoints. Readiness aggregates each module's dependencies
@@ -169,3 +177,7 @@ remove the flag once the rollout completes.
 - **Don't** return unbounded lists.
 - **Don't** read feature flags or trace state deep inside the domain.
 - **Don't** log unstructured strings or sensitive data (tokens, personal data).
+- **Do** type enums as enums in commands, queries, request records and `*.Application` DTOs; let the
+  `JsonStringEnumConverter` own the JSON and guard with `IsInEnum()`.
+- **Don't** model an enum as a `string` field that a handler re-parses with `Enum.Parse` — the only
+  string enums are the names exposed by `*.Contracts` (which cannot reference `*.Domain`).

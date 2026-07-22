@@ -25,6 +25,6 @@ internal sealed class GetRolesQueryHandler(IRoleRepository roles)
         role.Name,
         role.Description,
         role.IsSystem,
-        role.Scope.ToString(),
+        role.Scope,
         role.Permissions.Select(p => p.PermissionId).ToList());
 }

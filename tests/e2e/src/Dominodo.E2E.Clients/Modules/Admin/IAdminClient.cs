@@ -55,4 +55,43 @@ public interface IAdminClient
         [Body] UpdateNotificationTemplateModel model,
         [Header("X-Tenant")] string? tenant = null,
         [Authorize("Bearer")] string? token = null);
+
+    // Lists global settings plus the current tenant's overrides (when X-Tenant is sent) —
+    // SystemSettingsController.List, guarded by [HasPermission(Permissions.SettingsView)]. Anonymous ⇒ 401;
+    // a valid bearer lacking the permission ⇒ 403. Success is 200 with a paged envelope.
+    [Get("/api/v1/system-settings")]
+    Task<ApiResponse<PagedResultModel<SystemSettingModel>>> GetSystemSettings(
+        [Query] int? page = null,
+        [Query] int? pageSize = null,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // Gets a setting resolved for the current scope (tenant override if present, else the global value) —
+    // SystemSettingsController.GetByKey, guarded by [HasPermission(Permissions.SettingsView)]. Anonymous ⇒
+    // 401; lacking permission ⇒ 403; an unknown key ⇒ 404 SystemSetting.NotFound. Success is 200.
+    [Get("/api/v1/system-settings/{key}")]
+    Task<ApiResponse<SystemSettingModel>> GetSystemSettingByKey(
+        string key,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // Creates a setting — SystemSettingsController.Create, guarded by [HasPermission(Permissions.SettingsCreate)].
+    // With X-Tenant it creates a tenant override; without it a global row (Platform-role only). Anonymous ⇒
+    // 401; lacking permission ⇒ 403; invalid body ⇒ 400 Validation.Failed; a duplicate (Key, scope) ⇒ 409
+    // SystemSetting.AlreadyExists. Success is 201 Created ({"key": "..."}).
+    [Post("/api/v1/system-settings")]
+    Task<IApiResponse> CreateSystemSetting(
+        [Body] NewSystemSettingModel model,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
+
+    // Updates a setting's value for the current scope — SystemSettingsController.Update, guarded by
+    // [HasPermission(Permissions.SettingsEdit)]. Anonymous ⇒ 401; lacking permission ⇒ 403; invalid body ⇒
+    // 400 Validation.Failed; an unknown key ⇒ 404 SystemSetting.NotFound. Success is 204 NoContent.
+    [Put("/api/v1/system-settings/{key}")]
+    Task<IApiResponse> UpdateSystemSetting(
+        string key,
+        [Body] UpdateSystemSettingModel model,
+        [Header("X-Tenant")] string? tenant = null,
+        [Authorize("Bearer")] string? token = null);
 }

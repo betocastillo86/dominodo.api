@@ -6,15 +6,13 @@ using FluentValidation;
 
 namespace Dominodo.Tenants.Application.Apartments.ChangeApartmentStatus;
 
-internal sealed record ChangeApartmentStatusCommand(Guid ApartmentId, string Status) : ICommand;
+internal sealed record ChangeApartmentStatusCommand(Guid ApartmentId, ApartmentStatus Status) : ICommand;
 
 internal sealed class ChangeApartmentStatusCommandValidator : AbstractValidator<ChangeApartmentStatusCommand>
 {
     public ChangeApartmentStatusCommandValidator()
     {
-        RuleFor(x => x.Status)
-            .Must(status => Enum.TryParse<ApartmentStatus>(status, ignoreCase: false, out _))
-            .WithMessage("Status must be either 'Occupied' or 'Vacant'.");
+        RuleFor(x => x.Status).IsInEnum();
     }
 }
 
@@ -29,9 +27,7 @@ internal sealed class ChangeApartmentStatusCommandHandler(IApartmentRepository a
             return Error.NotFound("Apartment.NotFound", "Apartment not found.");
         }
 
-        var status = Enum.Parse<ApartmentStatus>(command.Status);
-
-        return status switch
+        return command.Status switch
         {
             ApartmentStatus.Occupied => apartment.MarkOccupied(),
             ApartmentStatus.Vacant => apartment.MarkVacant(),

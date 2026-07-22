@@ -44,7 +44,8 @@ public sealed class ChangeTenantStatusTests : BaseTenantsTests
     [Test]
     public async Task _400_WhenStatusIsNotAValidEnum()
     {
-        // Arrange — the only ChangeTenantStatusCommandValidator rule: Status must parse to TenantStatus.
+        // Arrange — Status is the TenantStatus enum; an unknown name is rejected at JSON binding and mapped
+        // to the same Validation.Failed shape as a validator error.
         var model = new ChangeTenantStatusModel { Status = "NotAStatus" };
         var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.TenantsEdit);
 

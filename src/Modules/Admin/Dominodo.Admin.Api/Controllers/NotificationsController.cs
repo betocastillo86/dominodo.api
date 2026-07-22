@@ -3,6 +3,7 @@ using Dominodo.Admin.Application.Notifications.GetMyNotifications;
 using Dominodo.Admin.Application.Notifications.ListNotifications;
 using Dominodo.Admin.Application.Notifications.MarkNotificationRead;
 using Dominodo.Admin.Contracts;
+using Dominodo.Admin.Domain.Notifications;
 using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Infrastructure.Http;
 using Dominodo.Shared.Kernel.Authorization;
@@ -78,7 +79,7 @@ public sealed class NotificationsController(ISender sender) : ControllerBase
 
 public sealed record CreateInAppMessageRequest(
     Guid RecipientUserId,
-    string Type,
+    NotificationType Type,
     string Title,
     string Body,
     string? TargetUrl);

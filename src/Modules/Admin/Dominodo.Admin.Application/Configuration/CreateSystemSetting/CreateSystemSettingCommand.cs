@@ -9,7 +9,7 @@ namespace Dominodo.Admin.Application.Configuration.CreateSystemSetting;
 internal sealed record CreateSystemSettingCommand(
     string Key,
     string Value,
-    string ValueType) : ICommand<string>;
+    SystemSettingValueType ValueType) : ICommand<string>;
 
 internal sealed class CreateSystemSettingCommandValidator : AbstractValidator<CreateSystemSettingCommand>
 {
@@ -17,10 +17,7 @@ internal sealed class CreateSystemSettingCommandValidator : AbstractValidator<Cr
     {
         RuleFor(x => x.Key).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Value).NotNull();
-
-        RuleFor(x => x.ValueType)
-            .Must(vt => Enum.TryParse<SystemSettingValueType>(vt, ignoreCase: false, out _))
-            .WithMessage("ValueType must be one of 'String', 'Int', 'Bool' or 'Json'.");
+        RuleFor(x => x.ValueType).IsInEnum();
     }
 }
 
@@ -45,9 +42,7 @@ internal sealed class CreateSystemSettingCommandHandler(
                 "A setting with this key already exists in this scope.");
         }
 
-        var valueType = Enum.Parse<SystemSettingValueType>(command.ValueType);
-
-        var result = SystemSetting.Create(key, tenantId, command.Value, valueType, clock);
+        var result = SystemSetting.Create(key, tenantId, command.Value, command.ValueType, clock);
         if (result.IsFailure)
         {
             return result.Error;

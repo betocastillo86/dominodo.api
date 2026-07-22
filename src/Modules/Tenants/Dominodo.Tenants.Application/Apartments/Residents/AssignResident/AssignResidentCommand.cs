@@ -10,7 +10,7 @@ namespace Dominodo.Tenants.Application.Apartments.Residents.AssignResident;
 internal sealed record AssignResidentCommand(
     Guid ApartmentId,
     Guid UserId,
-    string RelationType,
+    ResidentRelationType RelationType,
     bool LivesHere,
     DateOnly? StartDate) : ICommand<Guid>;
 
@@ -19,10 +19,7 @@ internal sealed class AssignResidentCommandValidator : AbstractValidator<AssignR
     public AssignResidentCommandValidator()
     {
         RuleFor(x => x.UserId).NotEmpty();
-
-        RuleFor(x => x.RelationType)
-            .Must(rt => Enum.TryParse<ResidentRelationType>(rt, ignoreCase: false, out _))
-            .WithMessage("RelationType must be either 'Owner' or 'Renter'.");
+        RuleFor(x => x.RelationType).IsInEnum();
     }
 }
 
@@ -47,9 +44,7 @@ internal sealed class AssignResidentCommandHandler(
             return Error.NotFound("User.NotFound", "The referenced user does not exist.");
         }
 
-        var relationType = Enum.Parse<ResidentRelationType>(command.RelationType);
-
-        var result = apartment.AssignResident(command.UserId, relationType, command.LivesHere, command.StartDate);
+        var result = apartment.AssignResident(command.UserId, command.RelationType, command.LivesHere, command.StartDate);
         if (result.IsFailure)
         {
             return result.Error;

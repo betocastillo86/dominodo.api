@@ -1,6 +1,7 @@
 using Dominodo.Admin.Application.Notifications.ListEmailMessages;
 using Dominodo.Admin.Application.Notifications.ListPushMessages;
 using Dominodo.Admin.Contracts;
+using Dominodo.Admin.Domain.Notifications;
 using Dominodo.Shared.Infrastructure.Auth;
 using Dominodo.Shared.Infrastructure.Http;
 using Dominodo.Shared.Kernel.Authorization;
@@ -22,7 +23,7 @@ public sealed class MessagesController(ISender sender) : ControllerBase
     [HasPermission(Permissions.NotificationsView)]
     [EndpointSummary("Lists email outbox messages, optionally filtered by status.")]
     [ProducesResponseType(typeof(PagedResult<EmailMessageDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> ListEmail([FromQuery] string? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    public async Task<IResult> ListEmail([FromQuery] DeliveryStatus? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
         var result = await sender.Send(new ListEmailMessagesQuery(status, page, pageSize), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
@@ -32,7 +33,7 @@ public sealed class MessagesController(ISender sender) : ControllerBase
     [HasPermission(Permissions.NotificationsView)]
     [EndpointSummary("Lists push outbox messages, optionally filtered by status.")]
     [ProducesResponseType(typeof(PagedResult<PushMessageDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> ListPush([FromQuery] string? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    public async Task<IResult> ListPush([FromQuery] DeliveryStatus? status = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
         var result = await sender.Send(new ListPushMessagesQuery(status, page, pageSize), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();

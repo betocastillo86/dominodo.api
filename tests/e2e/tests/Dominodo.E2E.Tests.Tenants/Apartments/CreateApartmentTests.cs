@@ -84,12 +84,11 @@ public sealed class CreateApartmentTests : BaseTenantsTests
     [Test]
     public async Task _400_WhenAllValidationRulesViolated()
     {
-        // Arrange — break every CreateApartmentCommandValidator rule at once: Number NotEmpty, Type enum-parse,
-        // Tower MaximumLength(50).
+        // Arrange — break the FluentValidation rules evaluated once the body binds: Number NotEmpty,
+        // Tower MaximumLength(50). (Type is an enum rejected at JSON binding — covered separately below.)
         var model = TenantsRequestBuilder.BuildNewApartmentModel() with
         {
             Number = "",
-            Type = "NotAType",
             Tower = new string('x', 51),
         };
         var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.ApartmentsCreate);
@@ -100,8 +99,23 @@ public sealed class CreateApartmentTests : BaseTenantsTests
         // Assert — one validation failure carrying an error per broken field.
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         response.ShouldHaveValidationError(nameof(NewApartmentModel.Number))
-                .ShouldHaveValidationError(nameof(NewApartmentModel.Type))
                 .ShouldHaveValidationError(nameof(NewApartmentModel.Tower));
+    }
+
+    [Test]
+    public async Task _400_WhenTypeIsNotAValidEnum()
+    {
+        // Arrange — an unknown enum name fails at JSON binding (JsonStringEnumConverter); the
+        // InvalidModelStateResponseFactory maps it to the same Validation.Failed shape as a validator error.
+        var model = TenantsRequestBuilder.BuildNewApartmentModel() with { Type = "NotAType" };
+        var token = JwtTokenFactory.GenerateToken(DominodoConstants.Permission.ApartmentsCreate);
+
+        // Act
+        var response = await TenantsClient.CreateApartment(model, tenant: SeededTenantSlug, token: token);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.ShouldHaveValidationError(nameof(NewApartmentModel.Type));
     }
 
     [Test]
