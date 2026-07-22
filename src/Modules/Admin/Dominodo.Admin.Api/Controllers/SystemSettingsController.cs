@@ -25,11 +25,11 @@ public sealed class SystemSettingsController(ISender sender) : ControllerBase
 {
     [HttpGet]
     [HasPermission(Permissions.SettingsView)]
-    [EndpointSummary("Lists global settings plus the current tenant's overrides (when X-Tenant is sent).")]
+    [EndpointSummary("Lists global settings plus the current tenant's overrides (when X-Tenant is sent). Optionally filtered by key.")]
     [ProducesResponseType(typeof(PagedResult<SystemSettingDto>), StatusCodes.Status200OK)]
-    public async Task<IResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    public async Task<IResult> List([FromQuery] string? key = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await sender.Send(new GetSystemSettingsQuery(page, pageSize), ct);
+        var result = await sender.Send(new GetSystemSettingsQuery(key, page, pageSize), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
 

@@ -8,7 +8,8 @@ using Dominodo.Shared.Kernel.Pagination;
 namespace Dominodo.Admin.Application.Configuration.GetSystemSettings;
 
 // Lists global settings plus, when an X-Tenant is resolved, that tenant's overrides (domain-model §4.4).
-internal sealed record GetSystemSettingsQuery(int Page = 1, int PageSize = 20) : IQuery<PagedResult<SystemSettingDto>>;
+// An optional Key narrows the list to settings whose key contains it (case-insensitive substring match).
+internal sealed record GetSystemSettingsQuery(string? Key = null, int Page = 1, int PageSize = 20) : IQuery<PagedResult<SystemSettingDto>>;
 
 internal sealed class GetSystemSettingsQueryHandler(
     ISystemSettingRepository settings,
@@ -19,7 +20,7 @@ internal sealed class GetSystemSettingsQueryHandler(
     {
         Guid? tenantId = tenant.HasTenant ? tenant.TenantId : null;
         var page = new PageRequest(query.Page, query.PageSize);
-        var (items, total) = await settings.GetAllAsync(tenantId, page, ct);
+        var (items, total) = await settings.GetAllAsync(tenantId, query.Key, page, ct);
         var dtos = items.Select(ToDto).ToList();
         return new PagedResult<SystemSettingDto>(dtos, page.Skip / page.Take + 1, page.Take, total);
     }

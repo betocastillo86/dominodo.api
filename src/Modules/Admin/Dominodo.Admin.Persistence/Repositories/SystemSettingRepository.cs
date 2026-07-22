@@ -31,13 +31,18 @@ internal sealed class SystemSettingRepository(AdminDbContext db) : ISystemSettin
             .FirstOrDefaultAsync(s => s.Key == key && s.TenantId == null, cancellationToken);
     }
 
-    public async Task<(IReadOnlyList<SystemSetting> Items, long TotalCount)> GetAllAsync(Guid? tenantId, PageRequest page, CancellationToken cancellationToken = default)
+    public async Task<(IReadOnlyList<SystemSetting> Items, long TotalCount)> GetAllAsync(Guid? tenantId, string? keyFilter, PageRequest page, CancellationToken cancellationToken = default)
     {
         var query = db.SystemSettings.AsNoTracking();
 
         query = tenantId is not null
             ? query.Where(s => s.TenantId == null || s.TenantId == tenantId)
             : query.Where(s => s.TenantId == null);
+
+        if (!string.IsNullOrWhiteSpace(keyFilter))
+        {
+            query = query.Where(s => s.Key.Contains(keyFilter));
+        }
 
         query = query.OrderBy(s => s.Key);
 
