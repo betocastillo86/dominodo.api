@@ -38,6 +38,7 @@ public static class DominodoConstants
         public const string ApartmentsView       = "apartments.view";
         public const string ApartmentsEdit       = "apartments.edit";
         public const string UsersView            = "users.view";
+        public const string UsersEdit            = "users.edit";
         // Operations — granular catalog
         public const string RequestsView         = "requests.view";
         public const string RequestsEdit         = "requests.edit";
@@ -99,6 +100,7 @@ public static class DominodoConstants
             ["announcements.view"]   = Guid.Parse("00000000-0000-0000-0000-000000001033"),
             ["announcements.edit"]   = Guid.Parse("00000000-0000-0000-0000-000000001034"),
             ["announcements.create"] = Guid.Parse("00000000-0000-0000-0000-000000001035"),
+            ["users.edit"]           = Guid.Parse("00000000-0000-0000-0000-000000001036"),
         };
 
         public static Guid UserIdFor(string permission) =>
@@ -141,6 +143,7 @@ public static class DominodoConstants
             ["announcements.view"]   = Guid.Parse("00000000-0000-0000-0000-000000001133"),
             ["announcements.edit"]   = Guid.Parse("00000000-0000-0000-0000-000000001134"),
             ["announcements.create"] = Guid.Parse("00000000-0000-0000-0000-000000001135"),
+            ["users.edit"]           = Guid.Parse("00000000-0000-0000-0000-000000001136"),
         };
 
         public static Guid TenantUserIdFor(string permission) =>

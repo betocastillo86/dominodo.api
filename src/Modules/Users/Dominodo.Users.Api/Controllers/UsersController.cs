@@ -5,6 +5,7 @@ using Dominodo.Shared.Kernel.Pagination;
 using Dominodo.Users.Application.Users.GetUserById;
 using Dominodo.Users.Application.Users.ListUsers;
 using Dominodo.Users.Application.Users.RegisterUser;
+using Dominodo.Users.Application.Users.UpdateUser;
 using Dominodo.Users.Contracts;
 using Dominodo.Users.Domain.Users;
 using MediatR;
@@ -73,6 +74,23 @@ public sealed class UsersController(ISender sender) : ControllerBase
 
         return result.IsSuccess ? Results.Ok(result.Value) : result.ToProblem();
     }
+
+    [HttpPut("{id:guid}")]
+    [HasPermission(Permissions.UsersEdit)]
+    [EndpointSummary("Updates a user's profile. Requires the users.edit permission.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IResult> Update(Guid id, UpdateUserRequest request, CancellationToken ct)
+    {
+        var result = await sender.Send(
+            new UpdateUserCommand(id, request.FirstName, request.LastName, request.Email, request.PreferredLanguage),
+            ct);
+
+        return result.IsSuccess ? Results.NoContent() : result.ToProblem();
+    }
 }
 
 public sealed record RegisterUserRequest(
@@ -81,3 +99,9 @@ public sealed record RegisterUserRequest(
     string FirstName,
     string LastName,
     string Password);
+
+public sealed record UpdateUserRequest(
+    string FirstName,
+    string LastName,
+    string? Email,
+    string PreferredLanguage);

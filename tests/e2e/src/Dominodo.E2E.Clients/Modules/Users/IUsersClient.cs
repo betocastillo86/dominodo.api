@@ -20,6 +20,17 @@ public interface IUsersClient
         Guid id,
         [Authorize("Bearer")] string? token = null);
 
+    // Update a user's profile — UsersController.Update, guarded by [HasPermission(Permissions.UsersEdit)].
+    // Platform capability (no X-Tenant param — the endpoint is tenant-agnostic): anonymous ⇒ 401,
+    // authenticated without users.edit (or holding it only via a tenant membership, since no tenant is
+    // resolved here) ⇒ 403, with the platform grant ⇒ 204 NoContent. Unknown id ⇒ 404 User.NotFound;
+    // an email already taken by another user ⇒ 409 User.EmailAlreadyRegistered.
+    [Put("/api/v1/users/{id}")]
+    Task<IApiResponse> UpdateUser(
+        Guid id,
+        [Body] UpdateUserModel model,
+        [Authorize("Bearer")] string? token = null);
+
     // Admin listing — UsersController.List, guarded by [HasPermission(Permissions.UsersView)]:
     // anonymous ⇒ 401, authenticated without users.view ⇒ 403, with it ⇒ 200. All filters optional.
     // page/pageSize are CLAMPED server-side (no validator), so an out-of-range page is NOT a 400 —

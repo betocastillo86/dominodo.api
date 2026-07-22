@@ -90,6 +90,27 @@ public sealed class UsersRequestBuilder(IUsersClient users, ISqlClient sql, JwtT
     }
 
     /// <summary>
+    /// Builds a valid <see cref="UpdateUserModel"/> (non-empty names, unique well-formed email,
+    /// short language code). Any field is overridable for negative cases:
+    /// <c>model with { FirstName = "" }</c>, or <c>model with { Email = null }</c> to clear it.
+    /// Does NOT call the API.
+    /// </summary>
+    public UpdateUserModel BuildUpdateUserModel(
+        string? firstName = null,
+        string? lastName = null,
+        string? email = null,
+        string? preferredLanguage = null)
+    {
+        return new UpdateUserModel
+        {
+            FirstName = firstName ?? Faker.Name.FirstName(),
+            LastName = lastName ?? Faker.Name.LastName(),
+            Email = email ?? $"e2e-{Guid.NewGuid():N}@example.com",
+            PreferredLanguage = preferredLanguage ?? "es",
+        };
+    }
+
+    /// <summary>
     /// Builds a valid <see cref="NewRoleModel"/> with a unique name.
     /// Any field is overridable: <c>model with { Name = "Custom" }</c>.
     /// </summary>

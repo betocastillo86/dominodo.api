@@ -136,6 +136,25 @@ public sealed class User : AggregateRoot
         return Result.Success();
     }
 
+    public Result UpdateProfile(string firstName, string lastName, Email? email, string preferredLanguage)
+    {
+        if (string.IsNullOrWhiteSpace(firstName))
+        {
+            return Error.Validation("User.FirstNameRequired", "First name is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(lastName))
+        {
+            return Error.Validation("User.LastNameRequired", "Last name is required.");
+        }
+
+        FirstName = firstName.Trim();
+        LastName = lastName.Trim();
+        Email = email?.Value;
+        PreferredLanguage = string.IsNullOrWhiteSpace(preferredLanguage) ? "es" : preferredLanguage;
+        return Result.Success();
+    }
+
     public void SetDocument(DocumentType documentType, string documentNumber)
     {
         DocumentType = documentType;

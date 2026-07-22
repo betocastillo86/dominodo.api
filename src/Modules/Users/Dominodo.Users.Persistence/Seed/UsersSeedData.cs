@@ -66,7 +66,8 @@ public static class UsersSeedData
         new(32, PermissionCodes.VisitsCreate,        "Registrar visitas.",                    "Visitas"),
         new(33, PermissionCodes.AnnouncementsView,   "Ver comunicados (incl. borradores).",   "Comunicaciones"),
         new(34, PermissionCodes.AnnouncementsEdit,   "Editar, publicar y archivar comunicados.", "Comunicaciones"),
-        new(35, PermissionCodes.AnnouncementsCreate, "Crear borradores de comunicados.",      "Comunicaciones")
+        new(35, PermissionCodes.AnnouncementsCreate, "Crear borradores de comunicados.",      "Comunicaciones"),
+        new(36, PermissionCodes.UsersEdit,           "Editar usuarios.",                      "Usuarios")
     };
 
     // SuperAdmin gets every permission; other roles get tenant-scoped grants per their responsibilities.
